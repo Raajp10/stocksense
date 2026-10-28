@@ -1,0 +1,14 @@
+# Design decisions
+
+1. **Flask/Jinja monolith.** Preserves the approved stack, reduces separate client/server setup, and provides inspectable request handlers for the course defense. Six blueprints share an app factory.
+2. **Balances plus ledger.** Per-location balance is the operational source of truth. Every change updates it and appends a movement atomically. Reconciliation compares the cached balance with summed movements. Product totals are derived from balances.
+3. **Serialize each store's writers.** A store-row update provides consistent write ordering on PostgreSQL and compatible behavior on SQLite. This trades throughput for correctness and straightforward testing in a small-store application. A conditional decrement still rejects insufficient selected-location stock.
+4. **Request idempotency.** Store/token uniqueness and a fingerprint of actor, action and payload give safe same-request retries. Different fields under an old token are rejected. This does not identify unrelated entries for the same physical delivery.
+5. **Exact arithmetic.** Whole-number quantities, integer cents, and Fraction-based target calculations avoid floating-point rounding when ceiling the reorder forecast. Display averages are decimal approximations only.
+6. **Business-calendar time.** Previous 14 completed local days include zero-sales days and exclude today. New products use available completed days. UTC storage and timezone-aware calendar boundaries keep reporting and reorder consistent.
+7. **Two replenishment decisions.** Supplier purchasing uses total stock and approved incoming units; shelf refills use source/destination balances and a target. Transfers do not change demand or purchase suggestions.
+8. **Historical snapshots and archives.** Prices and costs on transactions preserve history. Archiving retains references. Locations with stock, pending counts, open order lines or shelf rules cannot be archived.
+9. **Photo operations are separate.** Catalog creation succeeds independently of optional media. Validation failures cannot alter stock; replaced files are removed after successful persistence. Render's proposed disk stores media outside the disposable code directory.
+10. **No required AI.** Deterministic explanations satisfy the proposal without network/model cost. Gemini Q&A is explicitly a stretch goal and is deferred. Supplier email and PDF order export are likewise optional; CSV is implemented.
+11. **Local assets and original illustrations.** Browser dependencies are versioned and vendored with licenses. Fixtures are original geometric drawings. A classroom connection is unnecessary for the core workflow.
+12. **Evidence, not blanket claims.** Automated video verifies decoding, not physical optics. A Render blueprint is not deployment evidence. CI configuration is not a green hosted run. Each is recorded separately in the release checklist.

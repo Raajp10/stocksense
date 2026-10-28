@@ -1,0 +1,44 @@
+name: StockSense verification
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: stocksense_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.9.5'
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run playwright install --with-deps chromium
+      - name: SQLite unit and HTTP tests
+        run: uv run pytest --ignore=tests/e2e -q --junitxml=test-results/sqlite.xml
+      - name: PostgreSQL unit and HTTP tests
+        env:
+          TEST_DATABASE_URL: postgresql+psycopg://postgres:test-only-password@localhost:5432/stocksense_test
+        run: uv run pytest --ignore=tests/e2e -q --junitxml=test-results/postgres.xml
+      - name: Browser workflows
+        run: uv run pytest tests/e2e -q --junitxml=test-results/browser.xml
+      - name: Migration and reconciliation
+        run: |
+          uv run flask --app app db upgrade
+          uv run flask --app app db check
+          DEMO_OWNER_PASSWORD=ci-demo-owner-only DEMO_STAFF_PASSWORD=ci-demo-staff-only uv run flask --app app seed-demo
+          uv run flask --app app reconcile
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-results
+          path: test-results/

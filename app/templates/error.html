@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="panel"><span class="eyebrow">{{error.code}}</span><h1>{{error.name}}</h1><p>{{error.description}}</p><a class="btn btn-primary" href="{{url_for('dashboard.index')}}">Back to overview</a></section>{% endblock %}
