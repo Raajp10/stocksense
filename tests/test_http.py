@@ -134,3 +134,14 @@ def test_product_image_survives_new_application(app,signed_in,tmp_path):
         client.post('/login',data={'email':'owner@test.test','password':'test-password'})
         response=client.get('/products/1/photo')
         assert response.status_code==200 and response.data==before
+
+
+import pytest
+@pytest.mark.parametrize('channel',['manual','qr'])
+def test_manual_and_qr_confirm_same_persisted_result(signed_in,product,channel):
+    code=product.sku if channel=='manual' else product.qr_payload
+    response=signed_in.post('/scan',data={'mode':'sale','code':code})
+    payload=dict(product_id=1,quantity=2,location_id=1,reason='Comparison',token='channel_comparison_0001',confirm='yes')
+    assert signed_in.post(response.location,data=payload).status_code==302
+    sale=db.session.scalar(select(Sale).where(Sale.product_id==1))
+    assert (quantity(1,1,1),quantity(1,1,2),sale.quantity,sale.price_cents)==(1,5,2,550)

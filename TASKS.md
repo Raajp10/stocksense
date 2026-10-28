@@ -9,7 +9,8 @@ Current instruction: complete the project scope from PLAN.md, continuing beyond 
 - [x] Phase 4 local application: dashboard, date-filtered chart, snapshots, CSV safety, responsive UI, owner/staff Playwright workflows and synthetic camera tests.
 - [ ] Phase 4 hosting: Render service and durable media redeployment checks (connection and paid-resource decision required).
 - [x] Phase 5 preparation: PostgreSQL checks, report source, diagrams, screenshots, release docs and demo script.
-- [ ] Phase 5 release gates: fresh-install rehearsal, public repository, hosted green CI and generated PDF inspection.
+- [x] Phase 5 local/public gates: fresh-install rehearsal, public repository with unauthenticated source access, 23-page generated PDF inspection.
+- [x] Phase 5 initial hosted CI gate: run 40745866259 passed SQLite, PostgreSQL, browser, migration, seed and reconciliation. Expanded tests accompany the release update.
 - [ ] Phase 6: physical-device camera and presentation rehearsal with Raaj.
 - [ ] December 9: actual in-class demonstration and feedback.
 - [ ] December 10–13: apply essential feedback, finalize submission, submit PDF/repository URL.

@@ -4,15 +4,15 @@ Environment: macOS x86_64, CPython 3.12.14, locked Python dependencies, SQLite a
 
 | Command / check | Actual result | Evidence |
 |---|---|---|
-| `uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-sqlite.xml` | 49 passed | `evidence-sqlite.xml` |
-| `TEST_DATABASE_URL=postgresql+psycopg:///stocksense_codex_test uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-postgres.xml` | 49 passed | `evidence-postgres.xml` |
+| `uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-sqlite.xml` | 56 passed | `evidence-sqlite.xml` |
+| `TEST_DATABASE_URL=postgresql+psycopg:///stocksense_codex_test uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-postgres.xml` | 56 passed | `evidence-postgres.xml` |
 | `uv run pytest tests/e2e -q --junitxml=docs/evidence-browser.xml` | 5 passed | `evidence-browser.xml` |
 | `uv run flask --app app db upgrade` on empty SQLite database | Passed | Initial migration applied; also exercised in each test fixture |
 | `uv run flask --app app db check` | Passed: no new upgrade operations | Live local schema/model comparison |
 | `uv run flask --app app reconcile` | Passed | All per-location balances match movement sums |
 | `uv run python scripts/capture_screenshots.py` | Passed | Actual screenshots in `screenshots/`; no JavaScript page errors |
-| Fresh tracked-source installation | Pending final rehearsal | `scripts/fresh_install_check.py` |
-| Hosted GitHub Actions | Pending publication/run | Inspect actual run for pushed commit |
+| `uv run python scripts/fresh_install_check.py` | Passed: fresh locked install, empty migration, seed, reconcile, two-worker Gunicorn health/login | Executed in an isolated temporary directory |
+| Hosted GitHub Actions | Passed for initial published implementation (`e189fb5`): SQLite, PostgreSQL, browser, migration/seed/reconcile | https://github.com/Raajp10/stocksense/actions/runs/40745866259 |
 | Render deployment and photo persistence after redeploy | Not run | Requires connected Render account and accepted resources |
 | Physical camera on actual demo device | Not run | Requires Raaj's device/lighting/permission rehearsal |
 
@@ -35,3 +35,5 @@ Initial model import used a mixin column name before class construction; relatio
 ## Verification limits
 
 Synthetic video exercises the real decoder and repeated frames, but cannot prove physical camera focus, classroom lighting or permission UX. Restart persistence proves local path durability, not a Render disk lifecycle. Local PostgreSQL tests do not certify a hosted service, backups or production TLS. Performance, penetration testing, physical camera rehearsal and actual classroom defense are not claimed.
+
+The final local suite expands the initial hosted run with lifecycle, grouping, database-constraint, manual/QR parity and production-configuration cases. Inspect the latest main-branch Actions run for the expanded release suite.

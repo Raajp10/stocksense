@@ -231,3 +231,40 @@ def test_report_snapshot_zero_sales_and_dst(app,owner,product):
     with pytest.raises(DomainError): report(1,'2026-12-31','2026-01-01')
     empty=report(1,'2020-01-01','2020-01-02')
     assert empty['units']==0 and len(empty['chart']['labels'])==2
+
+
+def test_order_edit_cancel_snapshot_and_grouping(app,owner,product):
+    product.reorder_level=30
+    extra_supplier=Supplier(store_id=1,name='Second Supplier')
+    db.session.add(extra_supplier);db.session.flush()
+    extra=Product(store_id=1,supplier_id=extra_supplier.id,sku='EXTRA',name='Extra',reorder_level=10,created_at=now()-timedelta(days=30))
+    db.session.add(extra);db.session.commit()
+    ids=create_drafts(owner,2)
+    assert len(ids)==2
+    order=next(db.session.get(PurchaseOrder,i) for i in ids if db.session.get(PurchaseOrder,i).supplier_id==1)
+    item=order.items[0]
+    product.cost_cents=999;db.session.commit()
+    change_order(owner,order.id,'edit',{str(item.id):{'quantity':'10','destination_id':'1'}})
+    assert item.cost_cents==350 and item.quantity==10 and item.destination_id==1
+    change_order(owner,order.id,'approve')
+    row=next(r for r in recommendations(1) if r['product'].id==1)
+    assert row['incoming']==10 and row['suggested']==12
+    change_order(owner,order.id,'cancel')
+    assert next(r for r in recommendations(1) if r['product'].id==1)['suggested']==22
+    with pytest.raises(DomainError): execute(owner,'order_receipt',{'order_id':order.id},token())
+    assert quantity(1,1)==8
+
+
+def test_composite_foreign_key_rejects_cross_store_balance(app):
+    from sqlalchemy.exc import IntegrityError
+    db.session.add(StockBalance(store_id=1,product_id=2,location_id=1,quantity=1))
+    with pytest.raises(IntegrityError): db.session.commit()
+    db.session.rollback()
+    assert quantity(1,1)==8
+
+
+def test_slowest_includes_zero_sale_product(app):
+    p=Product(store_id=1,supplier_id=1,sku='ZERO',name='Never sold',created_at=now()-timedelta(days=20))
+    db.session.add(p);db.session.commit()
+    result=report(1)
+    assert any(product.id==p.id and sold==0 for product,sold in result['slowest'])

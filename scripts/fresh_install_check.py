@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix='stocksense-fresh-') as temporary:
         if source.is_file():
             dest=target/name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,dest)
     env=os.environ.copy()
-    for key in ['DATABASE_URL','APP_ENV','SECRET_KEY','UPLOAD_DIR','DEMO_OWNER_PASSWORD','DEMO_STAFF_PASSWORD']:
+    for key in ['DATABASE_URL','APP_ENV','SECRET_KEY','UPLOAD_DIR','DEMO_OWNER_PASSWORD','DEMO_STAFF_PASSWORD','VIRTUAL_ENV']:
         env.pop(key,None)
     env.update(SECRET_KEY=secrets.token_hex(32),DEMO_OWNER_PASSWORD=secrets.token_urlsafe(18),DEMO_STAFF_PASSWORD=secrets.token_urlsafe(18),UV_PROJECT_ENVIRONMENT=str(target/'.venv'))
     for args in [['uv','sync','--frozen'],['uv','run','flask','--app','app','db','upgrade'],['uv','run','flask','--app','app','db','check'],['uv','run','flask','--app','app','seed-demo'],['uv','run','flask','--app','app','reconcile']]:
