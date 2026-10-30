@@ -50,3 +50,5 @@ The expanded local run passed 95 tests. Standalone SQLite and PostgreSQL runs pa
 OCR results are suggestions, not universal receipt understanding. Photos/scanned PDFs need the local Tesseract executable; CI installs it before tests. Original supplier PDFs/CSV and reviewed data are preferred. Private uploaded documents stay outside Git.
 
 The button audit additionally verified owner-only restoration with stable QR tokens, blocked archival during active count sheets, and cancellation of an open request without stock changes.
+
+Expanded business-workflow hosted CI passed for implementation commit `a3e8049`: https://github.com/Raajp10/stocksense/actions/runs/40989654598 . The job installed Tesseract and passed SQLite, PostgreSQL, all browser workflows, migrations, seeding and reconciliation.

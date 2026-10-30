@@ -146,7 +146,7 @@ StockBalance is unique for each store/product/location tuple. Its quantity is no
 
 Operation supplies a unique store/token pair, request fingerprint and stored result. The fingerprint includes actor, action and normalized payload. The same token with matching fields returns the previous receipt; different fields are rejected. Sale records a price snapshot, and purchase-order lines record a unit-cost snapshot and destination. Changing catalog prices cannot rewrite historical revenue or order values.
 
-Archives preserve referenced catalog records and owner-only restoration retains stable QR labels. Active count sheets block product/location archival until resolved. Location archival is blocked while it has stock, pending counts, open order lines or shelf rules. Product archival requires resolving remaining stock and open orders. These policies favor an explainable audit trail over deleting records that historical transactions still reference.
+Archives retain historical references; owner restoration preserves QR labels. Resolve active count sheets before archiving products or locations. Locations must also have no stock, pending counts, open order lines or shelf rules; products must have no stock or open orders.
 
 ---PAGE---
 # Chapter 3: Software Design and Architecture

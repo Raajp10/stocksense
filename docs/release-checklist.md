@@ -31,3 +31,12 @@
 - [ ] Submit final PDF and direct public repository URL to BrightSpace by December 13, 11:59 p.m.
 
 Future dates are obligations, not tasks an automated implementation can certify in advance. Optional AI Q&A, email, PDF purchase orders, partial receipt, expiry/lot tracking and manufacturer barcodes are deliberately deferred.
+
+## October 29 expanded release
+
+- [x] Receipt/photo/PDF/CSV/email extraction, editable supplier/product review, source/order traceability, duplicate checks and atomic all-line receipt.
+- [x] Multi-product/location stock reviews, assignment, blind counts, progress, baseline refresh, variance approval, recount, cancellation and archival guards.
+- [x] Visual category/card UI, working action controls, reachable sidebar and owner-only record restoration.
+- [x] 95 local tests; PostgreSQL 84-case suite; fresh-install rehearsal and stock reconciliation.
+- [x] Hosted expanded-workflow CI passed: run 40989654598.
+- [x] Updated 25-page report, actual screenshots, README and private-upload handling.

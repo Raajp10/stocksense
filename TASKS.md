@@ -26,4 +26,4 @@ The remaining rehearsal and future course dates below are student follow-up obli
 - [x] Visual categories/cards, direct actions, dashboard navigation and short-window sidebar fix.
 - [x] Migrations preserve existing application data; core and new workflow tests run on SQLite/PostgreSQL and in a browser.
 - [x] Refreshed 25-page report, screenshots, handoff, fresh installation and 95 passing local tests (84 service/configuration/HTTP + 11 browser).
-- [ ] Final expanded-release hosted CI.
+- [x] Expanded-release hosted CI passed: https://github.com/Raajp10/stocksense/actions/runs/40989654598
