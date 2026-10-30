@@ -7,9 +7,6 @@ from email.utils import parseaddr
 from html.parser import HTMLParser
 from io import BytesIO, StringIO
 import re
-import shutil
-import subprocess
-import tempfile
 import threading
 from pathlib import Path
 import warnings
@@ -38,21 +35,8 @@ class PlainHTML(HTMLParser):
 
 
 def ocr_image(image):
-    binary=shutil.which('tesseract')
-    if not binary:
-        raise DomainError('Photo/scanned-PDF recognition needs Tesseract installed on this computer. Paste the document text or upload a text PDF/CSV instead.')
-    if image.width*image.height>16_000_000:
-        raise DomainError('Document image exceeds 16 megapixels.')
-    image=ImageOps.exif_transpose(image).convert('RGB')
-    image.thumbnail((2400,3200))
-    with tempfile.TemporaryDirectory(prefix='stocksense-ocr-') as directory:
-        source=Path(directory)/'page.png';image.save(source)
-        try:
-            result=subprocess.run([binary,str(source),'stdout','-l','eng','--psm','6'],
-                capture_output=True,timeout=30,check=True)
-        except (subprocess.SubprocessError,OSError) as exc:
-            raise DomainError('Document recognition could not finish. Try a sharper photo or paste its text.') from exc
-    return result.stdout.decode('utf-8',errors='replace')[:MAX_TEXT]
+    from .local_ocr import read_image
+    return read_image(image)
 
 
 def extract_document(data, filename):
@@ -82,8 +66,12 @@ def extract_document(data, filename):
                             try: text=ocr_image(bitmap.to_pil())
                             finally: bitmap.close();rendered.close()
                         finally: pdf.close()
+                if not hasattr(text,'extraction'):
+                    from .local_ocr import normalize_pdf_layout
+                    text=normalize_pdf_layout(text)
                 parts.append(text)
-            return '\n'.join(parts)[:MAX_TEXT]
+            from .local_ocr import DocumentText
+            return DocumentText('\n'.join(parts)[:MAX_TEXT],{'engine':'PDF pages','pages':[getattr(part,'extraction',{}) for part in parts]})
         except DomainError: raise
         except Exception as exc:
             raise DomainError('This PDF could not be read. Try a photo or paste the text.') from exc
@@ -141,13 +129,14 @@ def line_item(name,qty='',cost='',sku='',warning=''):
 
 
 def parse_text(text):
+    extraction=getattr(text,'extraction',{})
     text=text.replace('\r','')[:MAX_TEXT]
     lines=[line.strip() for line in text.split('\n') if line.strip()]
-    metadata={key:'' for key in ('supplier_name','email','phone','address','reference','document_date','subtotal','tax','shipping','discount','total','notes')}
+    metadata={key:'' for key in ('supplier_name','email','phone','address','reference','document_date','subtotal','tax','shipping','discount','total','notes','non_stock','non_stock_reason')}
     metadata['currency']='USD'
     for key,pattern in {
-        'supplier_name':r'^(?:supplier|vendor|sold by|from)\s*:\s*([^\n]+)',
-        'reference':r'(?:invoice|receipt|purchase order|order)\s*(?:number|no\.?|#|ref(?:erence)?)?\s*[:#-]\s*([\w./-]+)',
+        'supplier_name':r'^(?:supplier|vendor|sold by|from)[ \t]*:[ \t]*([^\n]+)',
+        'reference':r'(?:invoice|receipt|purchase order|order)\s*(?:number|no\.?|#|ref(?:erence)?)?[ \t]*[:#-][ \t]*([\w./-]+)',
         'phone':r'(?:phone|tel(?:ephone)?)\s*[:.]?\s*([+()\d][+()\d .-]{6,40})',
         'address':r'^address\s*:\s*([^\n]+)',
         'document_date':r'(?:invoice date|order date|date)\s*:\s*([^\n]+)',
@@ -162,7 +151,7 @@ def parse_text(text):
     if not metadata['address']:
         match=re.search(r'^\d+\s+[\w .,-]+(?:street|st\.?|road|rd\.?|avenue|ave\.?|drive|dr\.?|blvd|lane|ln\.?)\b[^\n]*',text,re.I|re.M)
         if match: metadata['address']=match.group(0)[:500]
-    for key,labels in [('subtotal','subtotal|sub total'),('tax','tax|sales tax|vat'),('shipping','shipping|delivery fee'),('discount','discount'),('total','grand total|amount due|total due|total')]:
+    for key,labels in [('subtotal','subtotal|sub total'),('tax','tax|sales tax|vat'),('shipping','shipping|delivery|delivery fee'),('discount','discount'),('total','grand total|amount due|total due|total')]:
         matches=re.findall(r'^\s*(?:'+labels+r')\s*[:$ ]+('+MONEY+r')\s*$',text,re.I|re.M)
         if matches: metadata[key]=amount(matches[-1])
     match=re.search(r'\b(USD|CAD|EUR|GBP|INR)\b',text)
@@ -192,11 +181,13 @@ def parse_text(text):
                 if not cost and values.get('total') and int(values['quantity']):
                     total=amount(values['total'])
                     if total: cost=amount(Decimal(total)/int(values['quantity']))
+                if re.fullmatch(r'(?:subtotal|total|tax|shipping|delivery|discount|delivery fee)',values['name'].strip().rstrip(':'),re.I): continue
                 item=line_item(values['name'],values['quantity'],cost,values.get('sku',''))
+                item['source_total']=amount(values.get('total',''))
                 for k in ('category','unit'):
                     if values.get(k): item[k]=values[k][:60 if k=='category' else 30]
                 items.append(item);continue
-        if re.match(r'^(?:sub\s*total|total|tax|vat|shipping|discount|balance|amount due|payment|cash|change|phone|tel|email|address|date|invoice|receipt|order|supplier|vendor|subject|thank|www\.)\b',raw,re.I) or re.search(r'[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}',raw):
+        if re.match(r'^(?:sub\s*total|total|tax|vat|shipping|discount|balance|amount due|payment|cash|change|delivery|phone|tel|email|address|date|invoice|receipt|order|supplier|vendor|subject|thank|www\.)\b',raw,re.I) or re.search(r'[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}',raw):
             continue
         match=re.match(r'^\s*(\d+)\s*[x×]\s+(.+?)\s*(?:@|at)\s*('+MONEY+r')',raw,re.I)
         if match:
@@ -228,5 +219,7 @@ def parse_text(text):
     unique=[]
     for item in items:
         if item['name']: unique.append(item)
-    return {'metadata':metadata,'lines':unique,'unparsed':unparsed[:100],
+    from .document_checks import inspect_document
+    return {'validation':inspect_document(metadata,unique),'metadata':metadata,'lines':unique,'unparsed':unparsed[:100],
+        'extraction':extraction,
         'warnings':['Recognition is a suggestion. Check every quantity, unit, cost and product match against the original.','Tax, shipping and discount are retained as document details; they are not inventory units.']}

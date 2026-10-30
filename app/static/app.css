@@ -15,3 +15,5 @@
 .sidebar{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}.sidebar .brand,.sidebar nav,.sidebar .nav-label,.sidebar-bottom{flex-shrink:0}.sidebar .brand{margin-bottom:28px}.sidebar nav{margin-bottom:20px}
 @media(max-width:700px){.sidebar{overflow-y:visible}.sidebar .brand{margin-bottom:15px}.sidebar nav{margin-bottom:0}}
 .btn-outline-secondary:hover,.btn-outline-secondary:active{background:#edf3e3;color:#365a37;border-color:#9eb68a}.btn:focus-visible{outline:3px solid #aac496;outline-offset:2px}
+
+@media(min-width:1151px){.import-line-grid{grid-template-columns:1.4fr 1.3fr .6fr .8fr .8fr 1.2fr;align-items:end}}

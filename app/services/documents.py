@@ -9,6 +9,7 @@ from ..extensions import db
 from ..models import DocumentImport, Product, Supplier, Location, PurchaseOrder, PurchaseOrderItem, now
 from .common import DomainError, lock_store, scoped, whole
 from .document_reader import parse_text
+from .document_checks import inspect_document
 
 
 def money_cents(value, field='Unit cost'):
@@ -80,13 +81,13 @@ def save_review(actor, ident, form):
             raise DomainError('This review changed in another tab. Reload before editing.')
         metadata={}
         limits={'supplier_name':100,'email':150,'phone':60,'address':500,'reference':100,
-            'document_date':60,'currency':3,'notes':1000}
+            'document_date':60,'currency':3,'notes':1000,'non_stock_reason':250}
         for key,limit in limits.items():
             metadata[key]=bounded(form.get(key),limit,key.replace('_',' ').title(),key in ('supplier_name','currency'))
         metadata['currency']=metadata['currency'].upper()
         if metadata['currency']!='USD':
             raise DomainError('This store uses USD. Convert unit costs to USD and note the source currency before confirming.')
-        for key in ('subtotal','tax','shipping','discount','total'):
+        for key in ('subtotal','tax','shipping','discount','total','non_stock'):
             value=form.get(key,'').strip()
             metadata[key]=f'{money_cents(value,key)/100:.2f}' if value else ''
         supplier_id=form.get('supplier_id','').strip()
@@ -119,13 +120,15 @@ def save_review(actor, ident, form):
             lines.append(dict(product_id=str(product_id),name=name,sku=sku,category=category,unit=unit,
                 quantity=whole(get('quantity'),1),cost_cents=money_cents(get('cost')),cost=get('cost'),
                 price_cents=price,price=f'{price/100:.2f}',location_id=location,
-                description=bounded(get('description'),1000,'Description',False),reorder_level=whole(get('reorder_level') or '0')))
+                source_total=f"{money_cents(get('source_total'),'Printed line total')/100:.2f}" if get('source_total') else '',description=bounded(get('description'),1000,'Description',False),reorder_level=whole(get('reorder_level') or '0')))
         new_skus=[line['sku'] for line in lines if not line['product_id']]
         if len(set(new_skus))!=len(new_skus):
             raise DomainError('New SKUs must be unique. Combine duplicate new-product rows into one quantity.')
         old=draft.data
+        checks=inspect_document(metadata,lines)
+        if checks['errors']: raise DomainError(' '.join(checks['errors']))
         draft.data=dict(metadata=metadata,supplier_id=supplier_id,lines=lines,
-            unparsed=old.get('unparsed',[]),warnings=old.get('warnings',[]),update_supplier=form.get('update_supplier')=='yes')
+            unparsed=old.get('unparsed',[]),warnings=old.get('warnings',[]),validation=checks,extraction=old.get('extraction',{}),reprocessed_from=old.get('reprocessed_from'),update_supplier=form.get('update_supplier')=='yes')
         draft.status='reviewed';draft.version+=1
         db.session.commit();return draft
     except Exception:
@@ -134,6 +137,12 @@ def save_review(actor, ident, form):
 
 def prepare_records(actor,draft):
     data=draft.data;metadata=data['metadata']
+    checks=inspect_document(metadata,data['lines'])
+    if checks['errors']: raise DomainError(' '.join(checks['errors']))
+    if data.get('reprocessed_from'):
+        previous=scoped(DocumentImport,int(data['reprocessed_from']),actor.store_id)
+        if previous.status=='received' and not previous.data.get('reversal'):
+            raise DomainError(f'This replaces received import #{previous.id}. Reverse its incorrect receipt before receiving replacement stock.')
     if draft.status!='reviewed': raise DomainError('Review and save every line before final confirmation.')
     if data.get('supplier_id'):
         supplier=scoped(Supplier,int(data['supplier_id']),actor.store_id,True)
@@ -211,3 +220,31 @@ def create_document_order(actor,ident,version):
         db.session.commit();return order.id
     except Exception:
         db.session.rollback();raise
+
+
+def reverse_receipt(actor,op,payload):
+    """Append a compensating receipt reversal; never edit the original ledger."""
+    from ..models import Operation,StockMovement
+    from .inventory import move
+    draft=scoped(DocumentImport,whole(payload['draft_id'],1),actor.store_id)
+    if draft.status!='received' or draft.data.get('reversal'):
+        raise DomainError('Only an unreversed received import can be reversed.')
+    reason=bounded(payload.get('reason'),250,'Reversal reason')
+    movements=receipt_movements(actor,draft)
+    for movement in movements:
+        if movement.delta<=0: raise DomainError('The original receipt history is not valid for automatic reversal.')
+        product=scoped(Product,movement.product_id,actor.store_id,True)
+        move(actor,op,product,movement.location_id,-movement.delta,f'Reverse import #{draft.id}: {reason}','document_reversal')
+    draft.dedupe_key=None  # A confirmed reversal releases this invoice for a corrected receipt.
+    draft.data={**draft.data,'reversal':{'operation_id':op.id,'reason':reason,'at':now().isoformat(),'actor_id':actor.id}}
+    return {'draft_id':draft.id,'reversed_movements':len(movements)}
+
+
+def receipt_movements(actor,draft):
+    from ..models import Operation,StockMovement
+    operations=db.session.scalars(select(Operation).where(Operation.store_id==actor.store_id,Operation.kind=='document_receipt')).all()
+    original=[o for o in operations if o.result.get('draft_id')==draft.id]
+    if len(original)!=1: raise DomainError('The original receipt operation cannot be uniquely identified. Review its ledger before correcting stock.')
+    movements=db.session.scalars(select(StockMovement).where(StockMovement.store_id==actor.store_id,StockMovement.operation_id==original[0].id).order_by(StockMovement.product_id,StockMovement.location_id)).all()
+    if not movements: raise DomainError('No original receipt movements were found.')
+    return movements

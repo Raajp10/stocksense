@@ -249,8 +249,6 @@ def test_owner_navigation_links_are_live(page,live_url):
 
 
 def test_photo_receipt_upload_reads_list_without_stock_writes(page,live_url,tmp_path):
-    import shutil
-    if not shutil.which('tesseract'): pytest.skip('Tesseract is required for photo recognition')
     from PIL import Image,ImageDraw
     image=Image.new('RGB',(1800,800),'white');draw=ImageDraw.Draw(image)
     for i,text in enumerate(['Supplier: Supplier','Invoice: PHOTO-UI','Oat milk 4 3.50 14.00','Green tea 6 2.00 12.00']):
@@ -263,5 +261,33 @@ def test_photo_receipt_upload_reads_list_without_stock_writes(page,live_url,tmp_
     expect(page.locator('input[name="line_0_quantity"]')).to_have_value('4')
     source=page.get_by_role('link',name='Open source document')
     assert page.request.get(live_url+source.get_attribute('href')).status==200
+    page.goto(live_url+'/products/1')
+    expect(page.locator('.stock-total')).to_contain_text('8')
+
+
+def test_actual_invoice_ml_upload_review_and_receive(page,live_url):
+    fixture=Path(__file__).parents[1]/'fixtures'/'invoice_test_1042.jpg'
+    login(page,live_url);page.goto(live_url+'/imports')
+    page.get_by_label('Receipt / document',exact=True).set_input_files(str(fixture))
+    page.get_by_role('button',name='Read document').click()
+    expect(page.locator('[data-import-line]')).to_have_count(3,timeout=30000)
+    expect(page.get_by_label('Supplier name',exact=True)).to_have_value('Midwest Demo Supplies')
+    expect(page.get_by_label('Invoice / order reference')).to_have_value('TEST-1042')
+    for index,(qty,cost) in enumerate([('12','3.50'),('8','4.25'),('10','1.40')]):
+        expect(page.locator(f'input[name="line_{index}_quantity"]')).to_have_value(qty)
+        expect(page.locator(f'input[name="line_{index}_cost"]')).to_have_value(cost)
+        if index: page.locator(f'input[name="line_{index}_price"]').fill('6.00')
+    page.locator('#import-default-location').select_option('2')
+    page.get_by_role('button',name='Apply to all rows').click()
+    page.get_by_role('button',name='Save review & continue').click()
+    expect(page.get_by_role('heading',name='What should happen next?')).to_be_visible()
+    page.get_by_label('I checked every product, quantity, unit, supplier and destination').check()
+    page.get_by_role('button',name='Receive delivered goods').click()
+    expect(page.get_by_role('alert')).to_contain_text('All reviewed delivery lines')
+    page.get_by_role('link',name='Reverse an incorrect receipt').click()
+    page.get_by_label('Reversal reason').fill('Test explicit invoice correction')
+    page.get_by_role('checkbox').check()
+    page.get_by_role('button',name='Confirm receipt reversal').click()
+    expect(page.get_by_text('Receipt reversed',exact=True)).to_be_visible()
     page.goto(live_url+'/products/1')
     expect(page.locator('.stock-total')).to_contain_text('8')

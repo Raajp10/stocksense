@@ -1,7 +1,7 @@
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
-import shutil
+from importlib.util import find_spec
 from flask import Blueprint,render_template,request,redirect,url_for,flash,send_from_directory,current_app,abort
 from flask_login import current_user
 from PIL import Image,ImageOps
@@ -13,8 +13,9 @@ from .models import DocumentImport,Product,Supplier,Location,PurchaseOrder
 from .routes import owner_required,rows,find,fail
 from .services.common import DomainError,whole
 from .services.document_reader import extract_document,MAX_BYTES
-from .services.documents import create_import,save_review,create_document_order
+from .services.documents import create_import,save_review,create_document_order,receipt_movements
 from .services.inventory import execute,quantity
+from .services.document_checks import inspect_document
 
 imports=Blueprint('imports',__name__)
 
@@ -51,7 +52,7 @@ def index():
         except (DomainError,IntegrityError,OperationalError) as exc:
             fail(exc)
             if key: (Path(current_app.config['UPLOAD_DIR'])/'documents'/key).unlink(missing_ok=True)
-    return render_template('imports.html',imports=list(reversed(rows(DocumentImport,False))),ocr_available=bool(shutil.which('tesseract')))
+    return render_template('imports.html',imports=list(reversed(rows(DocumentImport,False))),ocr_available=find_spec('rapidocr_onnxruntime') is not None)
 
 
 @imports.route('/imports/<int:ident>',methods=['GET','POST'])
@@ -67,10 +68,10 @@ def review(ident):
             fail(exc)
             # Keep invalid input so correcting one row never erases the rest of the list.
             form_data=request.form
-    data=draft.data
+    data={**draft.data,'validation':inspect_document(draft.data['metadata'],draft.data['lines'])}
     if form_data:
         data={**data,'metadata':{k:form_data.get(k,'') for k in data['metadata']},'supplier_id':form_data.get('supplier_id',''),'update_supplier':form_data.get('update_supplier')=='yes',
-            'lines':[{k:form_data.get(f'line_{key}_{k}','') for k in ('product_id','name','sku','quantity','cost','price','category','unit','location_id','description','reorder_level')} for key in form_data.getlist('line_key')[:100]]}
+            'lines':[{k:form_data.get(f'line_{key}_{k}','') for k in ('product_id','name','sku','quantity','cost','price','category','unit','location_id','description','reorder_level','source_total')} for key in form_data.getlist('line_key')[:100]]}
     open_orders=[]
     supplier_id=str(data.get('supplier_id',''))
     if supplier_id.isdigit():
@@ -116,3 +117,47 @@ def source(ident):
     image=draft.source_key.endswith('.jpg')
     return send_from_directory(Path(current_app.config['UPLOAD_DIR'])/'documents',draft.source_key,
         as_attachment=not image,mimetype='image/jpeg' if image else 'application/octet-stream',download_name=secure_filename(draft.source_name) or 'source-document.bin')
+
+
+@imports.post('/imports/<int:ident>/reread')
+@owner_required
+def reread(ident):
+    previous=find(DocumentImport,ident)
+    try:
+        if not previous.source_key: raise DomainError('No saved source file is available. Upload the original image/PDF to read it again.')
+        content=(Path(current_app.config['UPLOAD_DIR'])/'documents'/previous.source_key).read_bytes()
+        text=extract_document(content,previous.source_name)
+        draft,created=create_import(current_user,text,previous.source_name,previous.source_key)
+        if created:
+            from .services.common import lock_store
+            lock_store(current_user,True)
+            draft.data={**draft.data,'reprocessed_from':previous.id}
+            db.session.commit()
+        flash('Source read again with the new local ML/layout pipeline. Review this draft; existing inventory was not changed.','success')
+        return redirect(url_for('imports.review',ident=draft.id))
+    except (DomainError,IntegrityError,OperationalError,OSError) as exc:
+        fail(exc)
+        return redirect(url_for('imports.review',ident=ident))
+
+
+@imports.route('/imports/<int:ident>/reverse',methods=['GET','POST'])
+@owner_required
+def reverse(ident):
+    draft=find(DocumentImport,ident)
+    if request.method=='POST':
+        try:
+            if request.form.get('confirmed')!='yes': raise DomainError('Confirm the exact original quantities before reversing this receipt.')
+            execute(current_user,'document_reversal',{'draft_id':ident,'reason':request.form.get('reason','').strip()},request.form.get('token'))
+            flash('The original receipt was reversed with compensating movements. Its history is preserved.','success')
+            return redirect(url_for('imports.review',ident=ident))
+        except (DomainError,IntegrityError,OperationalError) as exc: fail(exc)
+    if draft.status!='received' or draft.data.get('reversal'):
+        return redirect(url_for('imports.review',ident=ident))
+    movements=receipt_movements(current_user,draft)
+    projections=[]
+    for movement in movements:
+        product=find(Product,movement.product_id);location=find(Location,movement.location_id)
+        current=quantity(current_user.store_id,product.id,location.id)
+        projections.append({'product':product,'location':location,'received':movement.delta,'before':current,'after':current-movement.delta})
+    return render_template('import_reverse.html',draft=draft,projections=projections,
+        sufficient=all(row['after']>=0 for row in projections),token=request.form.get('token') or uuid4().hex)

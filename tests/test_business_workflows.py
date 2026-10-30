@@ -92,7 +92,6 @@ def test_text_pdf_extraction():
     assert 'Example Dairy' in text and parse_text(text)['lines'][0]['quantity']=='12'
 
 
-@pytest.mark.skipif(not shutil.which('tesseract'),reason='Install Tesseract for real local OCR')
 @pytest.mark.parametrize('extension',['png','pdf'])
 def test_real_photo_and_scanned_pdf_ocr(extension):
     image=Image.new('RGB',(1800,800),'white');draw=ImageDraw.Draw(image)

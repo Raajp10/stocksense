@@ -16,4 +16,4 @@ Demo product illustrations and placeholder SVG are original geometric assets gen
 
 Significant AI assistance is recorded in `docs/ai-usage.md`.
 
-Receipt importing also uses pypdf (BSD-3-Clause), pypdfium2 (Apache-2.0/BSD-3-Clause, with PDFium's bundled third-party notices supplied by its package), and the separately installed Tesseract OCR executable (Apache-2.0). Upstreams: https://github.com/py-pdf/pypdf , https://github.com/pypdfium2-team/pypdfium2 , https://github.com/tesseract-ocr/tesseract . No cloud OCR service or mailbox data transfer is used.
+Receipt importing also uses pypdf (BSD-3-Clause), pypdfium2 (Apache-2.0/BSD-3-Clause, with PDFium's bundled third-party notices supplied by its package), RapidOCR 1.4.4 (Apache-2.0), bundled PaddleOCR PP-OCRv4 models (Apache-2.0), ONNX Runtime (MIT), OpenCV (Apache-2.0), NumPy (BSD-3-Clause), Shapely (BSD-3-Clause) and Pyclipper (MIT). Upstreams: https://github.com/py-pdf/pypdf , https://github.com/pypdfium2-team/pypdfium2 , https://github.com/RapidAI/RapidOCR , https://github.com/PaddlePaddle/PaddleOCR , https://github.com/microsoft/onnxruntime . No cloud OCR service or mailbox data transfer is used.

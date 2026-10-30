@@ -47,8 +47,17 @@ Hosted UTC-boundary defect: the final MVP CI exposed tests constructing history 
 
 The expanded local run passed 95 tests. Standalone SQLite and PostgreSQL runs passed 84 service/configuration/HTTP cases each, and Playwright passed 11 workflows. Real local Tesseract processed generated receipt photos and scanned PDFs; text PDF and HTML email extraction were also exercised. Tests cover editable supplier details, new/existing SKU matching, all-line receipt rollback/idempotency, duplicate references, order drafts with unchanged stock, owner purchasing reasons, multi-product/location sheets, blind counts, saved progress, stale sheet revisions, baseline refresh, recount history and atomic approval. Browser cases click actual row/location/count/recount/print actions and verify role restrictions, reachable sign-out/navigation and mobile layouts.
 
-OCR results are suggestions, not universal receipt understanding. Photos/scanned PDFs need the local Tesseract executable; CI installs it before tests. Original supplier PDFs/CSV and reviewed data are preferred. Private uploaded documents stay outside Git.
+OCR results are suggestions, not universal receipt understanding. This historical run used Tesseract; the ML correction below supersedes that dependency. Original supplier PDFs/CSV and reviewed data are preferred. Private uploaded documents stay outside Git.
 
 The button audit additionally verified owner-only restoration with stable QR tokens, blocked archival during active count sheets, and cancellation of an open request without stock changes.
 
 Expanded business-workflow hosted CI passed for implementation commit `a3e8049`: https://github.com/Raajp10/stocksense/actions/runs/40989654598 . The job installed Tesseract and passed SQLite, PostgreSQL, all browser workflows, migrations, seeding and reconciliation.
+
+
+## Actual invoice ML correction
+
+The supplied fictional TEST-1042 image exposed a real failure missed by the earlier generated fixtures: supplier/reference columns were mixed, and a delivery label became an inventory row. The replacement bundles RapidOCR PP-OCRv4 ONNX CPU models and reconstructs fields/tables from positions. The exact image now yields Midwest Demo Supplies, TEST-1042, Oat Milk 1L × 12 at $3.50, Rice 1kg × 8 at $4.25, Black Beans 400g × 10 at $1.40, and $90.00. The fictional fixture is public; private uploads are excluded.
+
+Regression checks include actual image recognition, resized/tilted variants, scanned/native PDF tables, money mismatch blocking, legacy finalization blocking, saved-source re-reading, replacement gating, explicit atomic/idempotent reversals and insufficient-stock rollback. Playwright verifies uploading the actual image, editing all rows, receiving and explicitly reversing the receipt. Local browser verification also confirmed the user's corrected draft #2 and unchanged movement count. The original wrong receipt was not silently reversed or re-received.
+
+Final local verification: 98 SQLite service/HTTP tests and 12 Playwright workflows passed. The isolated 14-case ML/recovery suite also passed after the printed-line-total input validation change. Hosted PostgreSQL verification is recorded in the corresponding Actions run.
