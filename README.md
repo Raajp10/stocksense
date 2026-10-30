@@ -1,6 +1,18 @@
-# StockSense
+# StockSense — prototype MVP
 
 A location-aware inventory and reorder assistant for a small café or shop. Built by Raaj Patel for Software Design I. Owners manage stock and suppliers; staff record sales, deliveries, transfers and physical counts. The reorder assistant explains its numbers using recent recorded sales.
+
+## Run the local prototype
+
+With [uv](https://docs.astral.sh/uv/getting-started/installation/) installed, run:
+
+```sh
+./scripts/run_mvp.sh
+```
+
+The launcher installs the locked environment, creates private demo credentials when `.env` is absent, migrates the database, seeds an empty database, checks stock reconciliation and opens a server at **http://127.0.0.1:5050**. Existing data and configuration are retained. For newly seeded accounts, read the owner/staff passwords from your local `.env` file (environment variables take precedence). Existing accounts keep their original passwords. Use `./scripts/run_mvp.sh --check` to prepare/check without starting a server, or `--port 5051` to choose another port.
+
+This is the requested local prototype MVP. It runs without a hosting subscription. Paid Render deployment is a future release step; its prepared configuration is retained. See [MVP scope and handoff](docs/mvp-handoff.md).
 
 ## Features
 

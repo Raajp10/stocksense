@@ -1,6 +1,8 @@
 # StockSense
 ## Smart inventory and reorder assistant for small businesses
 
+Local prototype MVP
+
 Software Design I · Fall 2026
 
 Raaj Patel
@@ -333,7 +335,7 @@ The system has deliberate limits. Whole-number units exclude weighed ingredients
 
 Future improvements can follow the existing boundaries: previewed CSV catalog import, manufacturer barcode mapping, partial-receipt state design, explicit returns/revenue reversals, durable object storage, stronger operational monitoring and a tested read-only AI adapter. Any learned forecasting would require appropriate data and evaluation rather than replacing an explainable formula with an unsupported claim.
 
-The immediate release priority is the external checklist: verify the public repository and hosted CI, provision Render only with accepted account/cost choices, test redeployment persistence, rehearse the physical camera and prepare the student's defense. Completion of code does not substitute for those operational and course obligations.
+The current handoff is the local prototype MVP requested by Raaj in response to the hosting question. A one-command launcher prepares and runs the application, and paid hosting is deferred. The public source and automated tests support evaluation. Physical-camera rehearsal, student defense and the scheduled course submission remain personal follow-up obligations. The prepared Render configuration supports a later deployment once account and cost choices are accepted.
 
 ---PAGE---
 # References

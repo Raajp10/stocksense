@@ -1,4 +1,6 @@
-# Render deployment and persistence
+# Future Render deployment and persistence
+
+The current requested deliverable is a local prototype MVP. This document describes optional later hosting and is not required to run or evaluate the MVP.
 
 The application uses Flask/Python 3.12 and PostgreSQL; it cannot run as a static Site or a JavaScript Cloudflare Worker. The available Sites hosting workflow is therefore unsuitable for this approved stack. `render.yaml` is the concrete Render deployment configuration. No Render service is claimed until a successful service response and runtime check exist.
 

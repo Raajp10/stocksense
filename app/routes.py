@@ -558,10 +558,14 @@ def export(kind):
     if kind=="inventory":
         data=[]
         for p in rows(Product,False):
+            has_stock=False
             for l in rows(Location,False):
                 q=quantity(sid(),p.id,l.id)
                 if q:
+                    has_stock=True
                     data.append([p.sku,p.name,p.unit,l.code,q,p.cost_cents,p.price_cents,q*p.cost_cents])
+            if not has_stock:
+                data.append([p.sku,p.name,p.unit,"",0,p.cost_cents,p.price_cents,0])
         return csv_response(kind,["SKU","Product","Unit","Location","Quantity","Unit cost cents","Price cents","Stock value cents"],data)
     if kind=="reorder":
         return csv_response(kind,["SKU","Product","Supplier","Stock","Average daily sales","Coverage days","Forecast target","Threshold","Approved incoming","Suggested units","Unit cost cents"],

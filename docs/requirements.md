@@ -24,3 +24,7 @@ Source priority: Raaj's current instruction requests completing the work. The su
 Nonfunctional requirements: local demo without external APIs/CDNs; keyboard-labelled forms; responsive layouts; CSRF on mutations; safe image handling; no negative stock; no cross-store references; installation from a fresh copy; documented limitations; truthful test/report evidence.
 
 External delivery requirements remain distinct: public GitHub availability, successful hosted CI, Render deployment and durable-media redeployment check, physical-camera smoke test on the actual demonstration device, student understanding/defense, the December 9 classroom presentation and December 13 BrightSpace submission. These cannot be inferred merely from local passing tests.
+
+## Current prototype MVP delivery scope
+
+Raaj replied “make these proto MVP” to the paid-hosting question. The delivered scope is therefore the working local application and its reviewable source, tests, report and demo instructions. Hosting remains prepared future work. Physical-device rehearsal and scheduled course attendance/submission remain student obligations; none are represented as completed. Core functional requirements FR01–FR16 remain implemented.

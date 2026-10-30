@@ -145,3 +145,13 @@ def test_manual_and_qr_confirm_same_persisted_result(signed_in,product,channel):
     assert signed_in.post(response.location,data=payload).status_code==302
     sale=db.session.scalar(select(Sale).where(Sale.product_id==1))
     assert (quantity(1,1,1),quantity(1,1,2),sale.quantity,sale.price_cents)==(1,5,2,550)
+
+
+def test_inventory_csv_retains_zero_stock_products(signed_in):
+    import csv
+    from io import StringIO
+    p=Product(store_id=1,supplier_id=1,sku='EMPTY',name='Empty product')
+    db.session.add(p);db.session.commit()
+    response=signed_in.get('/exports/inventory.csv')
+    records=list(csv.DictReader(StringIO(response.data.decode())))
+    assert any(r['SKU']=='EMPTY' and r['Quantity']=='0' for r in records)
