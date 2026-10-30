@@ -24,8 +24,14 @@ The deterministic scenario is covered by tests: starting shelf 3/backroom 5, sel
 - Stable QR labels, camera/manual input, images and location-based stock arithmetic.
 - Owner/staff roles, catalog/settings, physical counts, purchasing, reports and safe CSV exports.
 - Locked dependencies, migration, fictional seed, automated tests and public GitHub source.
-- A 23-page course report with six chapters, diagrams, screenshots and actual test results.
+- A 25-page course report with six chapters, diagrams, screenshots and actual test results.
 
 ## Follow-up
 
 Render hosting and hosted-media redeployment testing are deferred beyond the MVP. Physical-camera optics on the classroom device still require Raaj's rehearsal. The December demonstration and final BrightSpace submission remain scheduled course obligations. AI Q&A, email and other optional features remain future work.
+
+## New business workflows
+
+Use **Receive & import** for a whole receipt or supplier email. Text PDFs and CSV are preferred; photos/scanned PDFs use local Tesseract. Review all matches, supplier contacts, quantities, units, categories, costs and destinations, then choose an order draft or physically received stock. The source and finalized review remain traceable.
+
+Use **Stock reviews** for an annual or cycle count across multiple products and locations. Owners request the sheet, staff save/submit manual observations, and owners review differences before approving or asking for a recount. Category cards, stock filters, sorting and a compact table are available under Products. The sidebar scrolls on short screens so sign-out and settings remain reachable. Owners can restore archived records and cancel an unneeded count request without changing stock.

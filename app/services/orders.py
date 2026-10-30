@@ -32,7 +32,7 @@ def create_drafts(actor, destination_id, selected=None):
         raise
 
 
-def change_order(actor, order_id, action, edits=None):
+def change_order(actor, order_id, action, edits=None, override_reason=""):
     try:
         actor = lock_store(actor, owner=True)
         order = scoped(PurchaseOrder, order_id, actor.store_id)
@@ -63,7 +63,9 @@ def change_order(actor, order_id, action, edits=None):
                     scoped(Product, item.product_id, actor.store_id, active=True)
                     scoped(Location, item.destination_id, actor.store_id, active=True)
                     if item.product_id not in current or item.quantity > current[item.product_id]["suggested"]:
-                        raise DomainError("Demand or incoming stock changed. Reduce quantities to the current recommendation before approval.")
+                        if not 5<=len(override_reason.strip())<=250:
+                            raise DomainError("Demand or incoming stock changed. Reduce quantities to the current recommendation before approval, or enter a purchasing override reason (5–250 characters).")
+                order.approval_note=override_reason.strip()[:250]
                 order.status, order.approved_at, order.approved_by = "approved", now(), actor.id
         else:
             raise DomainError("Unknown order action.")

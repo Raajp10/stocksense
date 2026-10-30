@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 import qrcode
 from .extensions import db
 from .models import (User, Store, Product, Supplier, Location, StockBalance, StockMovement,
-    ShelfRule, PurchaseOrder, PurchaseOrderItem, StockCountRequest, Sale)
+    ShelfRule, PurchaseOrder, PurchaseOrderItem, StockCountRequest, Sale, DocumentImport, CountSession, CountSessionLine)
 from .services.common import DomainError, scoped, lock_store, whole
 from .services.inventory import execute, quantity, submit_count
 from .services.reorder import recommendations, shelf_refills
@@ -134,8 +134,25 @@ def products():
         loc = find(Location, whole(request.args["location"], 1))
         query = query.join(StockBalance, StockBalance.product_id == Product.id).where(
             StockBalance.location_id == loc.id, StockBalance.quantity > 0)
+    category=request.args.get('category','').strip()[:60]
+    if category:
+        query=query.where(Product.category==category)
     items = db.session.scalars(query.order_by(Product.name)).all()
-    return render_template("products.html", products=items, quantities={p.id:quantity(sid(),p.id) for p in items}, locations=rows(Location))
+    quantities={p.id:quantity(sid(),p.id) for p in items}
+    status=request.args.get('status','')
+    if status=='low': items=[p for p in items if quantities[p.id]<=p.reorder_level]
+    elif status=='empty': items=[p for p in items if quantities[p.id]==0]
+    elif status=='in_stock': items=[p for p in items if quantities[p.id]>p.reorder_level]
+    sort=request.args.get('sort','name')
+    if sort=='stock': items.sort(key=lambda p:(quantities[p.id],p.name.casefold()))
+    elif sort=='recent': items.sort(key=lambda p:p.created_at,reverse=True)
+    elif sort=='category': items.sort(key=lambda p:(p.category.casefold(),p.name.casefold()))
+    categories=db.session.execute(select(Product.category,func.count(Product.id)).where(
+        Product.store_id==sid(),Product.archived.is_(False)).group_by(Product.category).order_by(Product.category)).all()
+    return render_template("products.html", products=items, quantities=quantities, locations=rows(Location),
+        categories=categories,view='table' if request.args.get('view')=='table' else 'cards',
+        low_count=sum(quantities[p.id]<=p.reorder_level for p in items),
+        suppliers={s.id:s for s in rows(Supplier,False)})
 
 
 @catalog.route("/products/new", methods=["GET", "POST"])
@@ -176,7 +193,7 @@ def product_edit(ident=None):
             return redirect(url_for("catalog.product_detail", ident=product.id))
         except (DomainError, IntegrityError, OperationalError) as exc:
             fail(exc)
-    return render_template("product_form.html", product=product, suppliers=rows(Supplier), locations=rows(Location), token=request.form.get("token") or uuid4().hex)
+    return render_template("product_form.html", product=product, suppliers=rows(Supplier), locations=rows(Location), categories=sorted({p.category for p in rows(Product)}), token=request.form.get("token") or uuid4().hex)
 
 
 @catalog.get("/products/<int:ident>")
@@ -248,6 +265,11 @@ def archive(entity,ident):
     try:
         lock_store(current_user,True)
         obj = find(model,ident,True)
+        if model in (Location,Product):
+            reference=CountSessionLine.location_id if model==Location else CountSessionLine.product_id
+            if db.session.scalar(select(CountSessionLine.id).join(CountSession,CountSession.id==CountSessionLine.session_id).where(
+                CountSession.store_id==sid(),CountSession.status.in_(['counting','submitted']),reference==ident).limit(1)):
+                raise DomainError('Resolve active stock review sheets before archiving this record.')
         if model == Location:
             in_stock = db.session.scalar(select(func.count()).select_from(StockBalance).where(StockBalance.store_id==sid(),StockBalance.location_id==ident,StockBalance.quantity>0))
             pending = db.session.scalar(select(func.count()).select_from(StockCountRequest).where(StockCountRequest.store_id==sid(),StockCountRequest.location_id==ident,StockCountRequest.status=="pending"))
@@ -256,6 +278,8 @@ def archive(entity,ident):
             if in_stock or pending or open_lines or rules:
                 raise DomainError("Move stock and resolve counts, order lines and shelf rules before archiving this location.")
         elif model == Product:
+            if db.session.scalar(select(StockCountRequest.id).where(StockCountRequest.store_id==sid(),StockCountRequest.product_id==ident,StockCountRequest.status=='pending').limit(1)):
+                raise DomainError('Resolve pending physical counts before archiving this product.')
             if quantity(sid(),ident):
                 raise DomainError("Record an approved stock count to resolve remaining units before archiving.")
             if db.session.scalar(select(PurchaseOrderItem.id).join(PurchaseOrder, PurchaseOrder.id==PurchaseOrderItem.order_id).where(PurchaseOrder.store_id==sid(),PurchaseOrder.status.in_(["draft","approved"]),PurchaseOrderItem.product_id==ident).limit(1)):
@@ -270,6 +294,23 @@ def archive(entity,ident):
     return redirect(url_for("catalog.products") if model==Product else url_for("catalog.manage",entity=entity))
 
 
+@catalog.post('/<entity>/<int:ident>/restore')
+@owner_required
+def restore(entity,ident):
+    model={'products':Product,'suppliers':Supplier,'locations':Location}.get(entity)
+    if not model: abort(404)
+    try:
+        lock_store(current_user,True)
+        obj=find(model,ident)
+        if model==Product and obj.supplier.archived:
+            raise DomainError('Restore this product’s supplier first, then restore the product.')
+        obj.archived=False
+        db.session.commit()
+        flash('Record restored. Existing stock history and QR labels are retained.','success')
+    except (DomainError,IntegrityError,OperationalError) as exc: fail(exc)
+    return redirect(url_for('catalog.product_detail',ident=ident) if model==Product else url_for('catalog.manage',entity=entity))
+
+
 @catalog.route("/manage/<entity>",methods=["GET","POST"])
 @catalog.route("/manage/<entity>/<int:ident>",methods=["GET","POST"])
 @owner_required
@@ -282,7 +323,7 @@ def manage(entity,ident=None):
         try:
             lock_store(current_user,True)
             if entity=="suppliers":
-                values=dict(name=text_field("name"),contact=text_field("contact",250,False),lead_time_days=whole(request.form.get("lead_time_days"),0,365),safety_days=whole(request.form.get("safety_days"),0,365))
+                values=dict(name=text_field("name"),contact=text_field("contact",250,False),email=text_field("email",150,False),phone=text_field("phone",60,False),address=text_field("address",500,False),lead_time_days=whole(request.form.get("lead_time_days"),0,365),safety_days=whole(request.form.get("safety_days"),0,365))
             elif entity=="locations":
                 kind=request.form.get("kind")
                 if kind not in ("shelf","backroom","general"):
@@ -438,6 +479,9 @@ def delete_rule(ident):
 @inventory.route("/counts",methods=["GET","POST"])
 @login_required
 def counts():
+    if request.method=="GET" and request.args.get("individual")!="1":
+        from .reviews import list_reviews
+        return list_reviews()
     if request.method=="POST":
         try:
             submit_count(current_user,whole(request.form.get("product_id"),1),whole(request.form.get("location_id"),1),request.form.get("counted_quantity"),text_field("reason",250))
@@ -511,7 +555,7 @@ def order_detail(ident):
                 if current_user.role!="owner":
                     abort(403)
                 edits={str(i.id):{"quantity":request.form.get(f"qty_{i.id}",i.quantity),"destination_id":request.form.get(f"dest_{i.id}",i.destination_id)} for i in order.items}
-                change_order(current_user,ident,action,edits if action in ("edit","approve") else None)
+                change_order(current_user,ident,action,edits if action in ("edit","approve") else None,request.form.get("override_reason",""))
                 flash("Order updated.","success")
             return redirect(url_for("orders.order_detail",ident=ident))
         except (DomainError,IntegrityError,OperationalError) as exc:
@@ -519,7 +563,7 @@ def order_detail(ident):
     current={r["product"].id:r for r in recommendations(sid())}
     return render_template("order_detail.html",order=order,supplier=find(Supplier,order.supplier_id),
         products={p.id:p for p in rows(Product,False)},locations=rows(Location),location_map={l.id:l for l in rows(Location,False)},
-        recommendations=current,current_balances={i.id:quantity(sid(),i.product_id,i.destination_id) for i in order.items},token=request.form.get("token") or uuid4().hex)
+        source_document=db.session.scalar(select(DocumentImport).where(DocumentImport.store_id==sid(),DocumentImport.order_id==ident)),recommendations=current,current_balances={i.id:quantity(sid(),i.product_id,i.destination_id) for i in order.items},token=request.form.get("token") or uuid4().hex)
 
 
 @orders.post("/orders/<int:ident>/check-line")

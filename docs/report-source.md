@@ -11,7 +11,7 @@ Purdue University Northwest
 
 Instructor: OT Ajayi
 
-Prepared October 28, 2026
+Prepared October 29, 2026
 
 Repository: https://github.com/Raajp10/stocksense
 
@@ -92,11 +92,11 @@ The owner supplies initial records and staff accounts; there is no public regist
 
 FR01 requires hashed-password owner/staff sign-in, logout and authenticated routes. FR02 requires an owner-managed catalog with SKU, category, unit, supplier, prices and reorder level. FR03 requires supplier contact details, lead time and safety days. FR04 requires atomic sales and deliveries with matching movement history.
 
-FR05 requires physical-count submission and owner approval, including protection against stale counts. FR06 requires manual-threshold and forecast-risk warnings. FR07 requires a visible, sales-based reorder calculation. FR08 requires supplier-grouped drafts, editable quantities and destinations, approval, cancellation, CSV export and complete receipt once.
+FR05 requires physical-count submission and owner approval, including protection against stale counts. The expanded workflow also supports owner-requested annual/cycle sheets across many products and locations, assigned staff, blind counts, saved progress and recounts. FR06 requires manual-threshold and forecast-risk warnings. FR07 requires a visible, sales-based reorder calculation. FR08 requires supplier-grouped drafts, editable quantities and destinations, approval, cancellation, CSV export and complete receipt once.
 
 FR09 requires dashboard valuation, sales activity and fastest/slowest products. FR10 requires owner/store-scoped inventory, sales and reorder exports, including date ranges where applicable. FR11 requires documented installation, migration, seeding, tests and execution from a fresh source copy.
 
-The expanded requirements add product photos and descriptions (FR12), stable printable QR labels and scanning (FR13), per-location quantities and filtering (FR14), atomic internal stock transfers (FR15), and source-limited shelf refill suggestions (FR16). A QR identifies a product type; a scan itself must never change quantity. The user must select a positive whole-number quantity and appropriate locations, review the projected change and explicitly confirm.
+The October 29 expansion additionally supports receipt/email list extraction with editable supplier and product details, followed by an explicit order-draft or arrived-delivery decision. Visual cards, category filters and direct task navigation improve usability. The initial expanded requirements add product photos and descriptions (FR12), stable printable QR labels and scanning (FR13), per-location quantities and filtering (FR14), atomic internal stock transfers (FR15), and source-limited shelf refill suggestions (FR16). A QR identifies a product type; a scan itself must never change quantity. The user must select a positive whole-number quantity and appropriate locations, review the projected change and explicitly confirm.
 
 Supplier purchasing and shelf refill remain separate decisions. An empty shelf can need an internal transfer without requiring a supplier order. Conversely, transferring existing stock cannot increase the total available to the business. The interface uses different pages and language for these actions to preserve that distinction.
 
@@ -146,7 +146,7 @@ StockBalance is unique for each store/product/location tuple. Its quantity is no
 
 Operation supplies a unique store/token pair, request fingerprint and stored result. The fingerprint includes actor, action and normalized payload. The same token with matching fields returns the previous receipt; different fields are rejected. Sale records a price snapshot, and purchase-order lines record a unit-cost snapshot and destination. Changing catalog prices cannot rewrite historical revenue or order values.
 
-Archives preserve referenced catalog records. Location archival is blocked while it has stock, pending counts, open order lines or shelf rules. Product archival requires resolving remaining stock and open orders. These policies favor an explainable audit trail over deleting records that historical transactions still reference.
+Archives preserve referenced catalog records and owner-only restoration retains stable QR labels. Active count sheets block product/location archival until resolved. Location archival is blocked while it has stock, pending counts, open order lines or shelf rules. Product archival requires resolving remaining stock and open orders. These policies favor an explainable audit trail over deleting records that historical transactions still reference.
 
 ---PAGE---
 # Chapter 3: Software Design and Architecture
@@ -267,6 +267,34 @@ CSV output covers inventory, dated sales, reorder suggestions and individual ord
 The activity feed draws from movement history, showing action, location, signed quantity, actor and timestamp. Product detail exposes the latest hundred entries for that item. These views support explanation and troubleshooting without allowing a generic undo action that silently rewrites the past.
 
 ---PAGE---
+# Chapter 4: Implementation
+## 4.7 Whole-list receipt and supplier email importing
+
+[[screenshot:imports-report.png]]
+
+Figure 7. Actual Receive & import screen. A photo/PDF/CSV upload, saved email or pasted text enters the same review pipeline. A sample supplier email provides a read-only starting draft for demonstration.
+
+Original text PDFs and CSV tables are the preferred input when available. Paper photos and scanned PDF pages use local English Tesseract OCR; PDFium renders bounded pages under a process-local mutex [9]. Limits are ten megabytes, five PDF pages and one hundred item rows. Unsupported or unreadable inputs produce a validation message. No cloud OCR account or mailbox connection is required.
+
+The reader suggests supplier name, email, phone, address, reference, date, totals and product rows. The owner can correct fields, match inventory items or create new SKUs, set categories/units/prices, remove non-stock rows, add missed rows and apply a common receiving location. Every unit cost and quantity requires review. The parser covers common tables and receipt patterns; it does not guarantee understanding of every vendor layout, handwriting or case-size convention.
+
+A saved review leads to a separate confirmation. Saving a purchase-order draft changes no stock. Receiving arrived goods commits every reviewed line together through one inventory operation. Source hashes and supplier/reference keys reduce duplicate imports; links to open orders help avoid a second standalone receipt. Existing catalog prices remain intact, and supplier contacts update only when explicitly selected. Imported orders link back to their source and can be approved above forecast only with a recorded owner explanation.
+
+---PAGE---
+# Chapter 4: Implementation
+## 4.8 Annual reviews, manual counts and visual navigation
+
+Stock reviews replace repeated single-product forms with an owner-requested sheet. Owners select many products, optionally filter by category, choose locations, assign a counter, set a due date and explain the review purpose. Each selected product/location pair becomes one row, including zero-stock positions. The counter can save partial progress and submit the complete sheet only after every row has a physical quantity.
+
+Blind counting hides expected quantities from staff in both HTML and sheet CSV. Owners see the baseline, physical count, variance and current stock. A planned sheet can refresh its baseline when counting actually starts. The session's event count is a revision token that prevents an old browser tab from overwriting newer progress. Shared sheets are assigned to the first staff member who records progress.
+
+Approval validates all location balance versions before writing any correction. One stale row prevents every correction, requiring a manual recount. Recounting refreshes baselines, clears entry fields and retains previous observations in activity history. Owners can cancel an unneeded open request without any inventory correction. Successful approval uses one atomic inventory operation; retries cannot apply it twice. Staff cannot approve their own corrections or inspect another store's sheet.
+
+The product library now offers image cards and a compact table, category chips, stock-status/location filters, sorting and direct Sell/Receive/Details actions. Dashboard task cards lead to importing, scanning, reviews and products. A browser audit found that a tall fixed sidebar could place sign-out below short laptop windows. Scrollable navigation and tighter spacing make every control reachable. Submission feedback preserves the clicked button's action/value instead of disabling it before serialization.
+
+Browser tests exercise the actual receipt upload/review/receive buttons, adding/removing rows, bulk destination assignment, owner request to staff counting to owner approval, recount and print controls, live navigation links and narrow layouts. Existing inventory, purchasing and camera workflows continue to pass.
+
+---PAGE---
 # Chapter 5: Testing and Results
 ## 5.1 Test strategy and execution evidence
 
@@ -286,7 +314,7 @@ Test commands and limitations are preserved in docs/test-results.md. A configure
 # Chapter 5: Testing and Results
 ## 5.2 Transaction and arithmetic outcomes
 
-The core reorder fixture sells eighty-four units in the previous fourteen completed days. Its expected average is six, target thirty and suggestion twenty-two from stock eight. The test confirms those values and verifies that a sale recorded today does not enter the historical numerator. A newly created product uses its available completed days; a zero-history case avoids division by zero and uses the threshold.
+Expanded business tests additionally verify real photo/scanned-PDF OCR, PDF/email parsing, whole-list receipt rollback and idempotency, document/reference duplicates, supplier contact updates, imported-order approval explanations, multi-product/location counts, blind presentation, stale revisions and baseline refresh. The core reorder fixture sells eighty-four units in the previous fourteen completed days. Its expected average is six, target thirty and suggestion twenty-two from stock eight. The test confirms those values and verifies that a sale recorded today does not enter the historical numerator. A newly created product uses its available completed days; a zero-history case avoids division by zero and uses the threshold.
 
 The demo stock test confirms the sequence eight to six to six to thirty. It checks both location balances after each step and runs ledger reconciliation. Retrying the same sale token creates exactly one sale. Reusing the token with changed quantity is rejected. Transfers preserve total units and supplier recommendation inputs.
 
@@ -355,5 +383,7 @@ The current handoff is the local prototype MVP requested by Raaj in response to 
 [7] C. Wolfe and contributors, “jsQR.” Available: https://github.com/cozmo/jsQR . Apache License 2.0. QR generator: Lincoln Loop and contributors, “qrcode,” https://pypi.org/project/qrcode/ . Accessed Oct. 28, 2026.
 
 [8] Microsoft, “Playwright for Python documentation.” Available: https://playwright.dev/python/ . pytest contributors, “pytest documentation,” https://docs.pytest.org/ . Accessed Oct. 28, 2026.
+
+[9] Tesseract contributors, “Tesseract User Manual,” https://tesseract-ocr.github.io/tessdoc/ . pypdfium2 contributors, “Python API,” https://pypdfium2.readthedocs.io/en/stable/python_api.html . pypdf contributors, “Extract Text from a PDF,” https://pypdf.readthedocs.io/en/stable/user/extract-text.html . Accessed Oct. 29, 2026.
 
 Third-party asset licenses are retained under app/static/vendor and listed in THIRD_PARTY_NOTICES.md. Original geometric product fixtures are generated by app/cli.py. Significant AI assistance is disclosed in docs/ai-usage.md. Screenshots were captured from the local running application and are not design mockups.

@@ -17,7 +17,7 @@
 - [x] Fresh tracked-source install, seed, reconcile and two-worker Gunicorn startup rehearsal.
 - [x] Public GitHub repository created; page and raw README verified without credentials: https://github.com/Raajp10/stocksense
 - [x] Hosted GitHub Actions succeeds for published implementation: run 40745866259; expanded suite is included in the subsequent release push.
-- [x] Report PDF generated and inspected (23 pages): >=20 pages, six chapters, diagrams, actual tests/screenshots and repository URL.
+- [x] Report PDF generated and inspected (25 pages): >=20 pages, six chapters, diagrams, actual tests/screenshots and repository URL.
 
 ## Beyond the local MVP: deployment and course participation
 

@@ -28,6 +28,12 @@ erDiagram
  OPERATION ||--o| SALE : records
  OPERATION ||--o| STOCK_TRANSFER : records
  PRODUCT ||--o{ SALE : sold
+ USER ||--o{ DOCUMENT_IMPORT : reviews
+ DOCUMENT_IMPORT }o--o| PURCHASE_ORDER : creates
+ USER ||--o{ COUNT_SESSION : requests
+ COUNT_SESSION ||--|{ COUNT_SESSION_LINE : contains
+ PRODUCT ||--o{ COUNT_SESSION_LINE : counted
+ LOCATION ||--o{ COUNT_SESSION_LINE : counted_at
  PRODUCT ||--o{ SHELF_RULE : replenished_by
  LOCATION ||--o{ SHELF_RULE : targets
  SUPPLIER ||--o{ PURCHASE_ORDER : receives
@@ -75,3 +81,9 @@ Transfers append two linked movements and a transfer header in one transaction. 
 ## Time, media and boundaries
 
 Business-calendar date filters are interpreted in the store's IANA timezone, converted to UTC half-open intervals, and displayed with their date range. Reorder excludes today's incomplete day. DST boundaries are covered by a 23-hour business-day test. Photos are decoded, pixel-limited, normalized to JPEG, stripped of metadata and stored under random names. Images never supply stock quantities or identity. QR payloads are allowlisted versioned tokens, not arbitrary navigable URLs.
+
+## Receipt and review services
+
+`document_reader.py` extracts text from emails/text PDFs/CSV, or rasterizes scanned PDF pages under a process-local PDFium mutex and uses a bounded Tesseract subprocess. Extracted text becomes suggestions, never inventory writes. `documents.py` validates every reviewed field, store-scoped match and destination. A reviewed document can create a draft purchase order, or use the inventory service's single `document_receipt` operation to commit all rows. Exact source hashes and supplier/reference keys reduce duplicates. Existing prices remain intact; explicit supplier contact updates are owner-controlled.
+
+`stocktakes.py` stores an owner-requested sheet of product/location pairs. Its event count acts as a review revision to reject stale browser edits. Assignment and blind-count presentation are enforced server-side. Approval validates every balance version before any correction and commits the entire sheet through one inventory operation. Recounts preserve earlier observations while refreshing baseline versions. An untouched planned sheet can refresh its baseline before physical counting begins.

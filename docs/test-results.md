@@ -1,13 +1,13 @@
-# Verification evidence — October 28, 2026
+# Verification evidence — expanded business MVP, October 29, 2026
 
 Environment: macOS x86_64, CPython 3.12.14, locked Python dependencies, SQLite and PostgreSQL 14.18. Browser: Playwright 1.64.1 Chromium (plus an initial run through installed Chrome). Test databases and records are disposable and synthetic.
 
 | Command / check | Actual result | Evidence |
 |---|---|---|
-| `uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-sqlite.xml` | 58 passed | `evidence-sqlite.xml` |
-| `TEST_DATABASE_URL=postgresql+psycopg:///stocksense_codex_test uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-postgres.xml` | 58 passed | `evidence-postgres.xml` |
-| `uv run pytest tests/e2e -q --junitxml=docs/evidence-browser.xml` | 5 passed | `evidence-browser.xml` |
-| `TZ=UTC uv run pytest -q --junitxml=docs/evidence-mvp.xml` | 63 passed (58 service/HTTP/config + 5 browser) | Latest combined MVP verification |
+| `uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-sqlite.xml` | 84 passed | `evidence-sqlite.xml` |
+| `TEST_DATABASE_URL=postgresql+psycopg:///stocksense_codex_test uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-postgres.xml` | 84 passed | `evidence-postgres.xml` |
+| `uv run pytest tests/e2e -q --junitxml=docs/evidence-browser.xml` | 11 passed | `evidence-browser.xml` |
+| `TZ=UTC uv run pytest -q --junitxml=docs/evidence-mvp.xml` | 95 passed (84 service/HTTP/config + 11 browser) | Latest combined MVP verification |
 | `uv run flask --app app db upgrade` on empty SQLite database | Passed | Initial migration applied; also exercised in each test fixture |
 | `uv run flask --app app db check` | Passed: no new upgrade operations | Live local schema/model comparison |
 | `uv run flask --app app reconcile` | Passed | All per-location balances match movement sums |
@@ -42,3 +42,11 @@ The final local suite expands the initial hosted run with lifecycle, grouping, d
 MVP launcher: `./scripts/run_mvp.sh --check` prepares the configured local database, preserves existing records and verifies reconciliation. The user requested the prototype MVP in response to the hosting question, so paid hosting is outside the current handoff.
 
 Hosted UTC-boundary defect: the final MVP CI exposed tests constructing history with the runner's `date.today()` while production correctly used the store calendar. Test fixtures now use America/Chicago, and a fixed UTC-midnight regression verifies that a Chicago-today sale is excluded. The failed run was 40981165183; the correction is verified by the subsequent release run.
+
+## Receipt / annual review expansion
+
+The expanded local run passed 95 tests. Standalone SQLite and PostgreSQL runs passed 84 service/configuration/HTTP cases each, and Playwright passed 11 workflows. Real local Tesseract processed generated receipt photos and scanned PDFs; text PDF and HTML email extraction were also exercised. Tests cover editable supplier details, new/existing SKU matching, all-line receipt rollback/idempotency, duplicate references, order drafts with unchanged stock, owner purchasing reasons, multi-product/location sheets, blind counts, saved progress, stale sheet revisions, baseline refresh, recount history and atomic approval. Browser cases click actual row/location/count/recount/print actions and verify role restrictions, reachable sign-out/navigation and mobile layouts.
+
+OCR results are suggestions, not universal receipt understanding. Photos/scanned PDFs need the local Tesseract executable; CI installs it before tests. Original supplier PDFs/CSV and reviewed data are preferred. Private uploaded documents stay outside Git.
+
+The button audit additionally verified owner-only restoration with stable QR tokens, blocked archival during active count sheets, and cancellation of an open request without stock changes.

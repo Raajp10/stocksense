@@ -44,7 +44,7 @@ def move(actor, op, product, location_id, delta, reason, kind=None):
 def execute(actor, kind, payload, token):
     """One transaction for authorization, idempotency, balances, ledger and receipt."""
     try:
-        actor = lock_store(actor, owner=kind == "opening" or kind == "adjustment")
+        actor = lock_store(actor, owner=kind in ("opening", "adjustment", "document_receipt", "count_session"))
         if not re.fullmatch(r"[a-zA-Z0-9_-]{16,64}", token or ""):
             raise DomainError("Invalid submission token. Reload the form.")
         fingerprint = hashlib.sha256(json.dumps({"kind": kind, "actor": actor.id,
@@ -101,6 +101,12 @@ def execute(actor, kind, payload, token):
                 move(actor, op, product, item.destination_id, item.quantity, f"Order #{order.id}", "order_receipt")
             order.status, order.received_at, order.received_by = "received", now(), actor.id
             result["order_id"] = order.id
+        elif kind == "document_receipt":
+            from .documents import receive_document
+            result.update(receive_document(actor,op,payload))
+        elif kind == "count_session":
+            from .stocktakes import approve_session
+            result.update(approve_session(actor,op,payload))
         elif kind == "adjustment":
             count = scoped(StockCountRequest, whole(payload["count_id"], 1), actor.store_id)
             if count.status != "pending":

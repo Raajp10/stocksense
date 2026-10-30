@@ -16,6 +16,9 @@ This is the requested local prototype MVP. It runs without a hosting subscriptio
 
 ## Features
 
+- Whole-list receipt/email importing: photos, text/scanned PDFs, CSV, `.eml`, HTML and pasted text; editable supplier/product matching; review before receiving.
+- Annual/cycle count sheets covering many products and locations, assignment, blind staff counts, saved progress, owner variance approval and recounts.
+- Visual product cards, category navigation, status/location filters, sorting, compact table option and direct stock actions.
 - Owner/staff sign-in, server-side permissions, store isolation and CSRF protection.
 - Products, suppliers, prices, photos, descriptions, stable printable QR labels.
 - Camera QR lookup with manual SKU fallback, explicit review and confirmation.
@@ -53,6 +56,18 @@ The seed creates 18 products, three suppliers, three stock locations, 30 days of
 
 Without uv, create a Python 3.12 virtual environment and `pip install -r requirements.txt`, then invoke `flask` from that environment. Development checks use the locked uv environment.
 
+## Import a receipt or supplier email
+
+Open **Receive & import**. Prefer an original text PDF or CSV when available; for a paper slip upload a clear JPEG/PNG/WebP or use the phone photo picker. Photos and scanned PDFs use local English Tesseract OCR. Install it with `brew install tesseract` on macOS or `sudo apt-get install tesseract-ocr` on Debian/Ubuntu. Text PDFs, CSV and emails work without Tesseract. Files stay local in the configured private upload directory.
+
+Review the detected supplier, email/phone/address, invoice reference, date, totals and every item row. Match existing products or create new products with SKU, category, unit, cost and selling price. Apply a destination to all rows, remove non-stock rows and add any item recognition missed. Save the review, then explicitly choose **Save purchase-order draft** (no stock change) or **Receive delivered goods** (all rows commit together). Existing open orders are linked to help avoid a second standalone receipt. The sample supplier email lets you try the draft flow without changing stock.
+
+Recognition supports common tabular and receipt layouts; it is not a guarantee that every unfamiliar layout, handwriting, currency or case-size convention is understood. Up to 10 MB, 5 PDF pages and 100 item lines per import. Non-USD costs require explicit conversion to the store's USD unit costs before confirmation. Supplier-reference and exact-document checks prevent common duplicate imports. Existing catalog prices/costs are retained; receipt costs stay on the document/order. An owner can explicitly update supplier contact details.
+
+## Request a stock review
+
+Open **Stock reviews**, select many products (optionally filtered by category), choose locations, assign a team member and set a purpose/due date. Every selected product/location pair becomes a count row, including zero-stock positions. Staff can save progress and submit the complete sheet; expected quantities are hidden by default. Owners see baseline, counted quantity, variance and current stock, then approve all corrections together or request a manual recount. An untouched sheet can refresh its baseline when physical counting starts. Movements after that baseline require a recount before approval. Review activity and previous observations are retained. Sheet CSV and print actions are included. Owners can cancel an unneeded open request without changing stock. Archived catalog records have owner-only Restore actions, and active count sheets must be resolved before their products or locations can be archived.
+
 ## Verification
 
 ```sh
@@ -74,7 +89,7 @@ TEST_DATABASE_URL=postgresql+psycopg:///stocksense_test uv run pytest --ignore=t
 
 ## Interface
 
-A green sidebar opens Overview, Products, Scan & record, Stock locations, Refill shelves, Reorder assistant, Purchase orders and Stock counts. Owners also see supplier, location and team settings. Scan mode finds a product; the next form chooses units and locations; the confirmation page shows before/after quantities. Stock changes only after server confirmation.
+A green sidebar opens Overview, Products, Scan & record, Stock locations, Refill shelves, Reorder assistant, Purchase orders and Stock reviews. Owners also see supplier, location and team settings. Scan mode finds a product; the next form chooses units and locations; the confirmation page shows before/after quantities. Stock changes only after server confirmation.
 
 ![Overview](docs/screenshots/overview.png)
 

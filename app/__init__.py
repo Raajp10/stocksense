@@ -34,7 +34,7 @@ def create_app(config=None):
     elif url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+psycopg://", 1)
     app.config.update(SECRET_KEY=secret, SQLALCHEMY_DATABASE_URI=url,
-        SQLALCHEMY_TRACK_MODIFICATIONS=False, MAX_CONTENT_LENGTH=6*1024*1024,
+        SQLALCHEMY_TRACK_MODIFICATIONS=False, MAX_CONTENT_LENGTH=12*1024*1024,
         UPLOAD_DIR=os.getenv("UPLOAD_DIR", str(Path(app.instance_path)/"uploads")),
         SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=production, WTF_CSRF_TIME_LIMIT=3600)
@@ -56,6 +56,10 @@ def create_app(config=None):
     from .routes import auth, catalog, inventory, orders, dashboard, exports
     for blueprint in (auth, catalog, inventory, orders, dashboard, exports):
         app.register_blueprint(blueprint)
+    from .documents import imports
+    from .reviews import reviews
+    app.register_blueprint(imports)
+    app.register_blueprint(reviews)
     from .cli import register_commands
     register_commands(app)
 

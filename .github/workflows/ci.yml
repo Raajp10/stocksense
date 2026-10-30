@@ -23,6 +23,8 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen
       - run: uv run playwright install --with-deps chromium
+      - name: Install local receipt OCR
+        run: sudo apt-get install -y tesseract-ocr
       - name: SQLite unit and HTTP tests
         run: uv run pytest --ignore=tests/e2e -q --junitxml=test-results/sqlite.xml
       - name: PostgreSQL unit and HTTP tests

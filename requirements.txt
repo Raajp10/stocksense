@@ -52,6 +52,10 @@ psycopg==3.3.6
     # via stocksense
 psycopg-binary==3.3.6 ; implementation_name != 'pypy'
     # via psycopg
+pypdf==6.21.4
+    # via stocksense
+pypdfium2==5.14.0
+    # via stocksense
 python-dotenv==1.2.4
     # via stocksense
 qrcode==8.2

@@ -28,3 +28,15 @@ External delivery requirements remain distinct: public GitHub availability, succ
 ## Current prototype MVP delivery scope
 
 Raaj replied “make these proto MVP” to the paid-hosting question. The delivered scope is therefore the working local application and its reviewable source, tests, report and demo instructions. Hosting remains prepared future work. Physical-device rehearsal and scheduled course attendance/submission remain student obligations; none are represented as completed. Core functional requirements FR01–FR16 remain implemented.
+
+## Business workflow expansion requested October 29, 2026
+
+| ID | Business requirement | Implementation and evidence |
+|---|---|---|
+| FR17 | Read an entire receipt, delivery slip or supplier email into an editable review | `document_reader.py`, `documents.py`, import UI; parser, real OCR, PDF/email, browser upload and whole-list receipt tests |
+| FR18 | Detect/edit supplier contacts and document metadata; match/create products before applying | Supplier email/phone/address migration, reviewed JSON snapshots, explicit contact update, category/unit/cost/price validation; supplier and import tests |
+| FR19 | Distinguish an order from arrived goods and prevent repeated receipts | Import finalization choices, open-order links, source/order trace, source/reference deduplication, shared transactional inventory service; rollback/idempotency/order tests |
+| FR20 | Owner requests annual/cycle reviews for many products and locations | `CountSession` and lines; assignment, category selection, blind count/save/submit, baseline refresh, owner variance/recount/atomic approval; service and browser tests |
+| FR21 | Visual navigation, product categories and working actions | Product cards/table, category/status/location filters, dashboard task links, scrollable sidebar and preserved submit-button values; navigation, button and mobile browser tests; archive/restore and active-count guards |
+
+The preferred local input is a supplier CSV or original text PDF when available; photo/scanned-PDF OCR is the paper fallback. No external mailbox connection, cloud OCR subscription or automatic unreviewed stock write is required. Recognition limits are documented rather than represented as universal document understanding.

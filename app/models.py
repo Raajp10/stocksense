@@ -42,6 +42,9 @@ class User(UserMixin, Scoped, db.Model):
 class Supplier(Scoped, db.Model):
     name = db.Column(db.String(100), nullable=False)
     contact = db.Column(db.String(250), nullable=False, default="")
+    email = db.Column(db.String(150), nullable=False, default="", server_default="")
+    phone = db.Column(db.String(60), nullable=False, default="", server_default="")
+    address = db.Column(db.String(500), nullable=False, default="", server_default="")
     lead_time_days = db.Column(db.Integer, nullable=False, default=3)
     safety_days = db.Column(db.Integer, nullable=False, default=2)
     archived = db.Column(db.Boolean, nullable=False, default=False)
@@ -182,6 +185,7 @@ class PurchaseOrder(Scoped, db.Model):
     received_by = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, nullable=False, default=now)
     approved_at = db.Column(db.DateTime)
+    approval_note = db.Column(db.String(250), nullable=False, default="", server_default="")
     received_at = db.Column(db.DateTime)
     items = db.relationship("PurchaseOrderItem", backref="order", lazy="selectin")
     __table_args__ = (
@@ -223,4 +227,74 @@ class StockCountRequest(Scoped, db.Model):
         ForeignKeyConstraint(["store_id", "location_id"], ["location.store_id", "location.id"]),
         ForeignKeyConstraint(["store_id", "requester_id"], ["user.store_id", "user.id"]),
         ForeignKeyConstraint(["store_id", "approver_id"], ["user.store_id", "user.id"]),
+    )
+
+
+class DocumentImport(Scoped, db.Model):
+    source_name = db.Column(db.String(200), nullable=False)
+    source_hash = db.Column(db.String(64), nullable=False)
+    source_text = db.Column(db.Text, nullable=False)
+    source_key = db.Column(db.String(100))
+    data = db.Column(db.JSON, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="draft")
+    version = db.Column(db.Integer, nullable=False, default=0)
+    created_by = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=now)
+    finalized_at = db.Column(db.DateTime)
+    supplier_id = db.Column(db.Integer)
+    order_id = db.Column(db.Integer)
+    dedupe_key = db.Column(db.String(200))
+    __table_args__ = (
+        UniqueConstraint("store_id", "source_hash"), UniqueConstraint("store_id", "dedupe_key"),
+        CheckConstraint("status IN ('draft','reviewed','received','ordered')"),
+        ForeignKeyConstraint(["store_id", "created_by"], ["user.store_id", "user.id"]),
+        ForeignKeyConstraint(["store_id", "supplier_id"], ["supplier.store_id", "supplier.id"]),
+        ForeignKeyConstraint(["store_id", "order_id"], ["purchase_order.store_id", "purchase_order.id"]),
+    )
+
+
+class CountSession(Scoped, db.Model):
+    title = db.Column(db.String(120), nullable=False)
+    reason = db.Column(db.String(250), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="counting")
+    blind = db.Column(db.Boolean, nullable=False, default=True)
+    created_by = db.Column(db.Integer, nullable=False)
+    assignee_id = db.Column(db.Integer)
+    reviewed_by = db.Column(db.Integer)
+    due_date = db.Column(db.Date)
+    created_at = db.Column(db.DateTime, nullable=False, default=now)
+    submitted_at = db.Column(db.DateTime)
+    reviewed_at = db.Column(db.DateTime)
+    events = db.Column(db.JSON, nullable=False, default=list)
+    lines = db.relationship("CountSessionLine", lazy="selectin", backref="session")
+    __table_args__ = (
+        UniqueConstraint("store_id", "id"),
+        CheckConstraint("status IN ('counting','submitted','approved','rejected')"),
+        ForeignKeyConstraint(["store_id", "created_by"], ["user.store_id", "user.id"]),
+        ForeignKeyConstraint(["store_id", "assignee_id"], ["user.store_id", "user.id"]),
+        ForeignKeyConstraint(["store_id", "reviewed_by"], ["user.store_id", "user.id"]),
+    )
+
+
+    @property
+    def display_status(self):
+        if self.status=='rejected' and self.events and self.events[-1].get('action')=='Cancelled before submission':
+            return 'Cancelled'
+        return self.status.title()
+
+
+class CountSessionLine(Scoped, db.Model):
+    session_id = db.Column(db.Integer, nullable=False)
+    product_id = db.Column(db.Integer, nullable=False)
+    location_id = db.Column(db.Integer, nullable=False)
+    expected_quantity = db.Column(db.Integer, nullable=False)
+    observed_version = db.Column(db.Integer, nullable=False)
+    counted_quantity = db.Column(db.Integer)
+    note = db.Column(db.String(250), nullable=False, default="")
+    __table_args__ = (
+        UniqueConstraint("session_id", "product_id", "location_id"),
+        CheckConstraint("expected_quantity >= 0 AND (counted_quantity IS NULL OR counted_quantity >= 0)"),
+        ForeignKeyConstraint(["store_id", "session_id"], ["count_session.store_id", "count_session.id"]),
+        ForeignKeyConstraint(["store_id", "product_id"], ["product.store_id", "product.id"]),
+        ForeignKeyConstraint(["store_id", "location_id"], ["location.store_id", "location.id"]),
     )

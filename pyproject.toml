@@ -4,10 +4,19 @@ version = "1.0.0"
 description = "Location-aware inventory and explainable reorder assistant"
 requires-python = ">=3.12,<3.13"
 dependencies = [
- "Flask>=3.1,<3.2", "Flask-SQLAlchemy>=3.1,<3.2", "SQLAlchemy>=2.0,<2.1",
- "Flask-Login>=0.6,<0.7", "Flask-WTF>=1.2,<1.3", "Flask-Migrate>=4,<5",
- "Pillow>=11,<13", "qrcode>=8,<9", "psycopg[binary]>=3.2,<4",
- "gunicorn>=23,<24", "python-dotenv>=1,<2"
+ "Flask>=3.1,<3.2",
+ "Flask-SQLAlchemy>=3.1,<3.2",
+ "SQLAlchemy>=2.0,<2.1",
+ "Flask-Login>=0.6,<0.7",
+ "Flask-WTF>=1.2,<1.3",
+ "Flask-Migrate>=4,<5",
+ "Pillow>=11,<13",
+ "qrcode>=8,<9",
+ "psycopg[binary]>=3.2,<4",
+ "gunicorn>=23,<24",
+ "python-dotenv>=1,<2",
+ "pypdf>=6,<7",
+ "pypdfium2>=4.30,<6",
 ]
 [dependency-groups]
 dev = ["pytest>=8,<10", "pytest-playwright>=0.7,<0.8", "reportlab>=4,<5", "pypdf>=5,<7"]
