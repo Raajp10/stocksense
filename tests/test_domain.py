@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date,timedelta
+from datetime import date,datetime,timedelta
+from zoneinfo import ZoneInfo
 from io import BytesIO
 from uuid import uuid4
 import pytest
@@ -18,6 +19,11 @@ from app.routes import csv_safe
 
 
 def token(): return uuid4().hex
+
+
+def business_today():
+    # Fixtures must use the store calendar, even when the CI host uses UTC.
+    return datetime.now(ZoneInfo("America/Chicago")).date()
 
 
 @pytest.mark.parametrize('args,expected',[
@@ -135,7 +141,7 @@ def make_history(owner,product,today):
 
 
 def test_completed_day_window_and_new_product(app,owner,product):
-    today=date.today()
+    today=business_today()
     make_history(owner,product,today)
     row=recommendations(1,today)[0]
     assert (row['sold'],row['days'],row['average'],row['suggested'])==(84,14,6,22)
@@ -147,7 +153,7 @@ def test_completed_day_window_and_new_product(app,owner,product):
 
 
 def test_order_lifecycle_full_receipt_and_incoming(app,owner,product):
-    make_history(owner,product,date.today())
+    make_history(owner,product,business_today())
     ids=create_drafts(owner,2,{1})
     order=db.session.get(PurchaseOrder,ids[0])
     assert order.items[0].quantity==22 and quantity(1,1)==8
@@ -162,7 +168,7 @@ def test_order_lifecycle_full_receipt_and_incoming(app,owner,product):
 
 
 def test_duplicate_draft_approval_recomputed(app,owner,product):
-    make_history(owner,product,date.today())
+    make_history(owner,product,business_today())
     first=create_drafts(owner,2,{1})[0]
     second=create_drafts(owner,2,{1})[0]
     change_order(owner,first,'approve')
@@ -268,3 +274,14 @@ def test_slowest_includes_zero_sale_product(app):
     db.session.add(p);db.session.commit()
     result=report(1)
     assert any(product.id==p.id and sold==0 for product,sold in result['slowest'])
+
+
+def test_completed_window_excludes_chicago_today_after_utc_midnight(app,owner,product):
+    today=date(2026,10,29)
+    make_history(owner,product,today)
+    result=execute(owner,'sale',dict(product_id=1,location_id=1,quantity=1),token())
+    sale=db.session.scalar(select(Sale).where(Sale.operation_id==result['operation_id']))
+    # UTC has moved to Oct 30, but this sale is still Oct 29 in Chicago.
+    sale.effective_at=datetime(2026,10,30,0,30)
+    db.session.commit()
+    assert recommendations(1,today)[0]['sold']==84

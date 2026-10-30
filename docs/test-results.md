@@ -4,10 +4,10 @@ Environment: macOS x86_64, CPython 3.12.14, locked Python dependencies, SQLite a
 
 | Command / check | Actual result | Evidence |
 |---|---|---|
-| `uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-sqlite.xml` | 57 passed | `evidence-sqlite.xml` |
-| `TEST_DATABASE_URL=postgresql+psycopg:///stocksense_codex_test uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-postgres.xml` | 57 passed | `evidence-postgres.xml` |
+| `uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-sqlite.xml` | 58 passed | `evidence-sqlite.xml` |
+| `TEST_DATABASE_URL=postgresql+psycopg:///stocksense_codex_test uv run pytest --ignore=tests/e2e -q --junitxml=docs/evidence-postgres.xml` | 58 passed | `evidence-postgres.xml` |
 | `uv run pytest tests/e2e -q --junitxml=docs/evidence-browser.xml` | 5 passed | `evidence-browser.xml` |
-| `uv run pytest -q --junitxml=docs/evidence-mvp.xml` | 62 passed (57 service/HTTP/config + 5 browser) | Latest combined MVP verification |
+| `TZ=UTC uv run pytest -q --junitxml=docs/evidence-mvp.xml` | 63 passed (58 service/HTTP/config + 5 browser) | Latest combined MVP verification |
 | `uv run flask --app app db upgrade` on empty SQLite database | Passed | Initial migration applied; also exercised in each test fixture |
 | `uv run flask --app app db check` | Passed: no new upgrade operations | Live local schema/model comparison |
 | `uv run flask --app app reconcile` | Passed | All per-location balances match movement sums |
@@ -40,3 +40,5 @@ Synthetic video exercises the real decoder and repeated frames, but cannot prove
 The final local suite expands the initial hosted run with lifecycle, grouping, database-constraint, manual/QR parity and production-configuration cases. Inspect the latest main-branch Actions run for the expanded release suite.
 
 MVP launcher: `./scripts/run_mvp.sh --check` prepares the configured local database, preserves existing records and verifies reconciliation. The user requested the prototype MVP in response to the hosting question, so paid hosting is outside the current handoff.
+
+Hosted UTC-boundary defect: the final MVP CI exposed tests constructing history with the runner's `date.today()` while production correctly used the store calendar. Test fixtures now use America/Chicago, and a fixed UTC-midnight regression verifies that a Chicago-today sale is excluded. The failed run was 40981165183; the correction is verified by the subsequent release run.

@@ -304,7 +304,7 @@ A snapshot test records a sale, changes the current product price and confirms h
 
 Figure 6. Actual product library. Photos, SKUs, units, category, quantity, threshold and status support product selection. Owner-only cost/price information appears in the owner session; staff rendering is checked separately.
 
-The interface was captured from the running application using Playwright. Screenshot inspection identified a real defect: the sales chart container was blank because the shared application script executed before the deferred Chart.js script. The absence of a thrown exception made ordinary page rendering an insufficient test. Initialization was moved to DOMContentLoaded, and the browser login helper now asserts that Chart.getChart returns an initialized chart.
+The interface was captured from the running application using Playwright. Screenshot inspection identified a real defect: the sales chart container was blank because the shared application script executed before the deferred Chart.js script. The absence of a thrown exception made ordinary page rendering an insufficient test. Initialization was moved to DOMContentLoaded, and the browser login helper now asserts that Chart.getChart returns an initialized chart. A hosted run also exposed UTC-based fixture dates; fixtures now use the store calendar, with a fixed UTC-midnight regression.
 
 Mobile checks render the main operational pages at a 390-pixel viewport and assert that document width does not overflow. Tables use scrollable containers. The owner setup workflow creates a supplier, a location, a product with opening stock, a photo and a staff account, then verifies the printed label. This extends coverage beyond merely navigating pre-seeded pages.
 
