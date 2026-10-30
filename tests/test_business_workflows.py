@@ -212,7 +212,7 @@ def test_stocktake_requires_complete_counts_and_current_revision(app,owner):
 def test_import_and_count_roles_and_blind_expected_data(client,owner):
     session=create_session(owner,'Blind sheet','Independent count',[1],[1,2],2,True)
     client.post('/login',data={'email':'staff@test.test','password':'test-password'})
-    assert client.get('/imports').status_code==403
+    assert client.get('/imports').status_code==200
     assert client.post('/stocktakes/new',data={}).status_code==403
     response=client.get(f'/stocktakes/{session.id}')
     assert response.status_code==200 and b'Expected baseline' not in response.data

@@ -270,15 +270,15 @@ The activity feed draws from movement history, showing action, location, signed 
 # Chapter 4: Implementation
 ## 4.7 Whole-list receipt and supplier email importing
 
-[[screenshot:imports-report.png]]
+[[screenshot:imports-quick.png]]
 
 Figure 7. Actual Receive & import screen. A photo/PDF/CSV upload, saved email or pasted text enters the same review pipeline. A sample supplier email provides a read-only starting draft for demonstration.
 
 Original text PDFs and CSV tables are the preferred input when available. Paper photos and scanned PDF pages use bundled RapidOCR PP-OCRv4 ONNX models on the CPU, with spatial field/table reconstruction; PDFium renders bounded pages under a process-local mutex [9]. Limits are ten megabytes, five PDF pages and one hundred item rows. Unsupported or unreadable inputs produce a validation message. No cloud OCR account or mailbox connection is required.
 
-The reader suggests supplier name, email, phone, address, reference, date, totals and product rows. The owner can correct fields, match inventory items or create new SKUs, set categories/units/prices, remove non-stock rows, add missed rows and apply a common receiving location. Every unit cost and quantity requires review. The parser covers common tables and receipt patterns; it does not guarantee understanding of every vendor layout, handwriting or case-size convention.
+The default flow is upload, check items and add stock for owners and workers. Supplier details are saved automatically. Users correct names, quantities and unit costs, with one visible receiving location for the list. New SKUs are generated; extra matching/category fields stay optional. Owners can open the full review to edit supplier contacts, totals or pricing. Unpriced new products can receive stock but cannot record sales until priced. Recognition still requires comparison with the source.
 
-A saved review leads to a separate confirmation. Saving a purchase-order draft changes no stock. Receiving arrived goods commits every reviewed line together through one inventory operation. Source hashes and supplier/reference keys reduce duplicate imports; links to open orders help avoid a second standalone receipt. Existing catalog prices remain intact, and supplier contacts update only when explicitly selected. Imported orders link back to their source and can be approved above forecast only with a recorded owner explanation.
+A delivery checkbox and one Add items button finalize the simple flow; workers access their own documents. The optional owner workflow supports a separate purchase-order decision. Saving an order changes no stock. Receiving goods commits every reviewed line together through one inventory operation. Source hashes and supplier/reference keys reduce duplicate imports; links to open orders help avoid a second standalone receipt. Existing catalog prices remain intact, and supplier contacts update only when explicitly selected. Imported orders link back to their source and can be approved above forecast only with a recorded owner explanation.
 
 ---PAGE---
 # Chapter 4: Implementation

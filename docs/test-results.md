@@ -61,3 +61,8 @@ The supplied fictional TEST-1042 image exposed a real failure missed by the earl
 Regression checks include actual image recognition, resized/tilted variants, scanned/native PDF tables, money mismatch blocking, legacy finalization blocking, saved-source re-reading, replacement gating, explicit atomic/idempotent reversals and insufficient-stock rollback. Playwright verifies uploading the actual image, editing all rows, receiving and explicitly reversing the receipt. Local browser verification also confirmed the user's corrected draft #2 and unchanged movement count. The original wrong receipt was not silently reversed or re-received.
 
 Final local verification: 98 SQLite service/HTTP tests and 12 Playwright workflows passed. The isolated 14-case ML/recovery suite also passed after the printed-line-total input validation change. Hosted PostgreSQL verification is recorded in the corresponding Actions run.
+
+
+## Simple receiving for owners and workers
+
+Local verification passed 103 service/HTTP cases and 15 Playwright workflows. Both owner and staff browser cases upload the actual TEST-1042 photo, verify the default destination, confirm delivery and add all three products without company or selling-price fields. Additional checks cover manual item controls, mobile layout, own-document restrictions, ignored privileged form fields, unchanged catalog prices, missing suppliers, mismatched totals, whole-list receipt safety, duplicate posts and blocked sales until new products are priced. Live draft #2 was checked at desktop and 390px width without receiving stock.

@@ -22,10 +22,9 @@
       ('inventory.locations','Stock locations','⌖'),('inventory.refills','Refill shelves','⇄'),
       ('orders.reorder','Reorder assistant','↗'),('orders.order_list','Purchase orders','▤'),
       ('inventory.counts','Stock reviews','✓')] %}
-      {% if endpoint!='imports.index' or current_user.role=='owner' %}
+
       {% set active=request.endpoint==endpoint or (endpoint=='inventory.counts' and request.endpoint and request.endpoint.startswith('reviews.')) or (endpoint=='imports.index' and request.endpoint and request.endpoint.startswith('imports.')) %}
       <a class="{{'active' if active else ''}}" href="{{url_for(endpoint)}}"><span>{{icon}}</span>{{label}}</a>
-      {% endif %}
     {% endfor %}
   </nav>
   {% if current_user.role=='owner' %}

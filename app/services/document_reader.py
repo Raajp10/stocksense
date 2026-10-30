@@ -158,7 +158,7 @@ def parse_text(text):
     if match: metadata['currency']=match.group(1)
     if not metadata['supplier_name']:
         for line in lines[:8]:
-            if not re.search(r'@|invoice|receipt|order|date|qty|quantity|description|^\d|^subject:|^email:',line,re.I) and len(line)<100:
+            if not re.search(r'@|invoice|receipt|order|date|qty|quantity|description|^\d|^subject:|^email:|\d[.,]\d{2}\b|^(?:sub\s*total|total|tax|shipping|delivery|discount)\b',line,re.I) and len(line)<100:
                 metadata['supplier_name']=line;break
     items=[];unparsed=[];header=None;delimiter=None
     aliases={'qty':'quantity','quantity':'quantity','units':'quantity','item':'name','description':'name','product':'name','name':'name','sku':'sku','itemcode':'sku','code':'sku','unitprice':'cost','unitcost':'cost','price':'cost','cost':'cost','amount':'total','linetotal':'total','total':'total','category':'category','unit':'unit'}

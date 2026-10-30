@@ -3,7 +3,7 @@ from pathlib import Path
 from uuid import uuid4
 from importlib.util import find_spec
 from flask import Blueprint,render_template,request,redirect,url_for,flash,send_from_directory,current_app,abort
-from flask_login import current_user
+from flask_login import current_user,login_required
 from PIL import Image,ImageOps
 from werkzeug.utils import secure_filename
 from sqlalchemy import select
@@ -20,8 +20,14 @@ from .services.document_checks import inspect_document
 imports=Blueprint('imports',__name__)
 
 
+def find_import(ident):
+    draft=find(DocumentImport,ident)
+    if current_user.role!='owner' and draft.created_by!=current_user.id: abort(404)
+    return draft
+
+
 @imports.route('/imports',methods=['GET','POST'])
-@owner_required
+@login_required
 def index():
     if request.method=='POST':
         key=None
@@ -48,20 +54,31 @@ def index():
             if not created and key:
                 (Path(current_app.config['UPLOAD_DIR'])/'documents'/key).unlink(missing_ok=True)
             flash('Document read. Check the suggested details below.' if created else 'This document already exists. Opened its saved review; no stock was added.','success')
-            return redirect(url_for('imports.review',ident=draft.id))
+            return redirect(url_for('imports.review',ident=draft.id,**({'advanced':'1'} if current_user.role=='owner' and request.args.get('advanced')=='1' else {})))
         except (DomainError,IntegrityError,OperationalError) as exc:
             fail(exc)
             if key: (Path(current_app.config['UPLOAD_DIR'])/'documents'/key).unlink(missing_ok=True)
-    return render_template('imports.html',imports=list(reversed(rows(DocumentImport,False))),ocr_available=find_spec('rapidocr_onnxruntime') is not None)
+    return render_template('imports.html',imports=[d for d in reversed(rows(DocumentImport,False)) if current_user.role=='owner' or d.created_by==current_user.id],ocr_available=find_spec('rapidocr_onnxruntime') is not None)
 
 
 @imports.route('/imports/<int:ident>',methods=['GET','POST'])
-@owner_required
+@login_required
 def review(ident):
-    draft=find(DocumentImport,ident)
+    draft=find_import(ident)
     form_data=None
     if request.method=='POST':
         try:
+            if request.form.get('mode')=='quick':
+                if draft.status=='received':
+                    flash('This bill has already been added. No duplicate stock was added.','success')
+                    return redirect(url_for('imports.review',ident=ident))
+                if request.form.get('confirmed')!='yes': raise DomainError('Confirm that you checked the items and received the delivery.')
+                from .services.quick_receive import review_form
+                draft=save_review(current_user,ident,review_form(current_user,draft,request.form))
+                result=execute(current_user,'document_receipt',{'draft_id':ident,'version':draft.version},request.form.get('token'))
+                flash('Items added to stock. New products without a selling price can be priced by the owner later.','success')
+                return redirect(url_for('imports.review',ident=ident))
+            if current_user.role!='owner': abort(403)
             draft=save_review(current_user,ident,request.form)
             return redirect(url_for('imports.confirm',ident=ident))
         except (DomainError,IntegrityError,OperationalError) as exc:
@@ -70,20 +87,22 @@ def review(ident):
             form_data=request.form
     data={**draft.data,'validation':inspect_document(draft.data['metadata'],draft.data['lines'])}
     if form_data:
-        data={**data,'metadata':{k:form_data.get(k,'') for k in data['metadata']},'supplier_id':form_data.get('supplier_id',''),'update_supplier':form_data.get('update_supplier')=='yes',
-            'lines':[{k:form_data.get(f'line_{key}_{k}','') for k in ('product_id','name','sku','quantity','cost','price','category','unit','location_id','description','reorder_level','source_total')} for key in form_data.getlist('line_key')[:100]]}
+        data={**data,'metadata':data['metadata'] if form_data.get('mode')=='quick' else {k:form_data.get(k,'') for k in data['metadata']},'supplier_id':form_data.get('supplier_id',''),'update_supplier':form_data.get('update_supplier')=='yes',
+            'lines':[{**{k:form_data.get(f'line_{key}_{k}','') for k in ('product_id','name','sku','quantity','cost','price','category','unit','location_id','description','reorder_level','source_total')},'_form_key':key} for key in form_data.getlist('line_key')[:100]]}
     open_orders=[]
     supplier_id=str(data.get('supplier_id',''))
     if supplier_id.isdigit():
         open_orders=db.session.scalars(select(PurchaseOrder).where(PurchaseOrder.store_id==current_user.store_id,
             PurchaseOrder.supplier_id==int(supplier_id),PurchaseOrder.status.in_(['draft','approved'])).order_by(PurchaseOrder.id.desc()).limit(10)).all()
-    return render_template('import_review.html',draft=draft,data=data,products=rows(Product),suppliers=rows(Supplier),locations=rows(Location),open_orders=open_orders,editable=draft.status in ('draft','reviewed'))
+    from .services.quick_receive import default_location
+    advanced=current_user.role=='owner' and request.args.get('advanced')=='1'
+    return render_template('import_review.html' if advanced else 'import_quick.html',advanced=advanced,destination=request.form.get('destination') or str(default_location(current_user.store_id)),token=request.form.get('token') or uuid4().hex,draft=draft,data=data,products=rows(Product),suppliers=rows(Supplier),locations=rows(Location),open_orders=open_orders,editable=draft.status in ('draft','reviewed'))
 
 
 @imports.route('/imports/<int:ident>/confirm',methods=['GET','POST'])
 @owner_required
 def confirm(ident):
-    draft=find(DocumentImport,ident)
+    draft=find_import(ident)
     if request.method=='POST':
         try:
             if request.form.get('confirmed')!='yes': raise DomainError('Confirm that the document and physical delivery/order were reviewed.')
@@ -94,10 +113,10 @@ def confirm(ident):
             if request.form.get('action')!='receive': raise DomainError('Choose an order draft or delivered stock.')
             result=execute(current_user,'document_receipt',{'draft_id':ident,'version':whole(request.form.get('version'))},request.form.get('token'))
             flash('Already received; no duplicate stock added.' if result['duplicate'] else 'All reviewed delivery lines were received together.','success')
-            return redirect(url_for('imports.review',ident=ident))
+            return redirect(url_for('imports.review',ident=ident,advanced=1))
         except (DomainError,IntegrityError,OperationalError) as exc: fail(exc)
     if draft.status not in ('reviewed','received','ordered'):
-        return redirect(url_for('imports.review',ident=ident))
+        return redirect(url_for('imports.review',ident=ident,advanced=1))
     balances={}
     cumulative={}
     for i,line in enumerate(draft.data['lines']):
@@ -110,9 +129,9 @@ def confirm(ident):
 
 
 @imports.get('/imports/<int:ident>/source')
-@owner_required
+@login_required
 def source(ident):
-    draft=find(DocumentImport,ident)
+    draft=find_import(ident)
     if not draft.source_key: abort(404)
     image=draft.source_key.endswith('.jpg')
     return send_from_directory(Path(current_app.config['UPLOAD_DIR'])/'documents',draft.source_key,
@@ -143,7 +162,7 @@ def reread(ident):
 @imports.route('/imports/<int:ident>/reverse',methods=['GET','POST'])
 @owner_required
 def reverse(ident):
-    draft=find(DocumentImport,ident)
+    draft=find_import(ident)
     if request.method=='POST':
         try:
             if request.form.get('confirmed')!='yes': raise DomainError('Confirm the exact original quantities before reversing this receipt.')

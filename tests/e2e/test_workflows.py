@@ -148,7 +148,7 @@ def test_owner_catalog_photo_location_and_staff_setup(page,live_url,tmp_path):
 
 def test_receipt_list_review_and_receive_all_lines(page,live_url):
     login(page,live_url)
-    page.goto(live_url+'/imports')
+    page.goto(live_url+'/imports?advanced=1')
     page.get_by_label('Email or receipt text').fill('Supplier: Supplier\nInvoice: BROWSER-101\nSKU,Description,Qty,Unit cost\nOAT-001,Oat milk,12,3.50\nTEA-NEW,Green tea,6,2.00')
     page.get_by_role('button',name='Find supplier & items').click()
     expect(page.get_by_role('heading',name='Check the details, together.')).to_be_visible()
@@ -223,7 +223,7 @@ def test_count_recount_and_print_buttons(page,live_url,owner):
 
 def test_import_add_remove_apply_location_and_mobile(page,live_url):
     login(page,live_url)
-    page.goto(live_url+'/imports')
+    page.goto(live_url+'/imports?advanced=1')
     page.get_by_label('Email or receipt text').fill('Supplier: Supplier\nOat milk 2 3.50 7.00')
     page.get_by_role('button',name='Find supplier & items').click()
     page.get_by_role('button',name='Add a missing item').click()
@@ -254,7 +254,7 @@ def test_photo_receipt_upload_reads_list_without_stock_writes(page,live_url,tmp_
     for i,text in enumerate(['Supplier: Supplier','Invoice: PHOTO-UI','Oat milk 4 3.50 14.00','Green tea 6 2.00 12.00']):
         draw.text((60,50+i*140),text,fill='black',font_size=44)
     photo=tmp_path/'receipt.png';image.save(photo)
-    login(page,live_url);page.goto(live_url+'/imports')
+    login(page,live_url);page.goto(live_url+'/imports?advanced=1')
     page.get_by_label('Receipt / document',exact=True).set_input_files(str(photo))
     page.get_by_role('button',name='Read document').click()
     expect(page.locator('[data-import-line]')).to_have_count(2)
@@ -267,7 +267,7 @@ def test_photo_receipt_upload_reads_list_without_stock_writes(page,live_url,tmp_
 
 def test_actual_invoice_ml_upload_review_and_receive(page,live_url):
     fixture=Path(__file__).parents[1]/'fixtures'/'invoice_test_1042.jpg'
-    login(page,live_url);page.goto(live_url+'/imports')
+    login(page,live_url);page.goto(live_url+'/imports?advanced=1')
     page.get_by_label('Receipt / document',exact=True).set_input_files(str(fixture))
     page.get_by_role('button',name='Read document').click()
     expect(page.locator('[data-import-line]')).to_have_count(3,timeout=30000)
@@ -291,3 +291,39 @@ def test_actual_invoice_ml_upload_review_and_receive(page,live_url):
     expect(page.get_by_text('Receipt reversed',exact=True)).to_be_visible()
     page.goto(live_url+'/products/1')
     expect(page.locator('.stock-total')).to_contain_text('8')
+
+@pytest.mark.parametrize('staff',[False,True])
+def test_quick_bill_scan_check_add_for_owner_and_worker(page,live_url,staff):
+    login(page,live_url,staff=staff)
+    page.get_by_role('link',name='Receive & import',exact=False).click()
+    fixture=Path(__file__).parents[1]/'fixtures'/'invoice_test_1042.jpg'
+    page.get_by_label('Receipt / document',exact=True).set_input_files(str(fixture))
+    page.get_by_role('button',name='Read document').click()
+    expect(page.get_by_role('heading',name='Check your items')).to_be_visible(timeout=30000)
+    expect(page.locator('[data-quick-item]')).to_have_count(3)
+    expect(page.locator('select[name=destination]')).to_have_value('2')
+    assert page.locator('input[name=supplier_name]').count()==0
+    assert page.locator('input[name$=_price]').count()==0
+    if not staff: capture_business_screen(page,'imports-quick.png')
+    page.get_by_label('I checked these items and the delivery has arrived.').check()
+    page.get_by_role('button',name='Add 3 items to stock').click()
+    expect(page.get_by_role('heading',name='Items added',exact=True)).to_be_visible()
+    expect(page.get_by_role('link',name='Scan another bill')).to_be_visible()
+    page.goto(live_url+'/products/1')
+    expect(page.locator('.stock-total')).to_contain_text('20')
+
+
+def test_quick_item_controls_and_mobile(page,live_url):
+    login(page,live_url)
+    page.goto(live_url+'/imports')
+    page.get_by_label('Email or receipt text').fill('Supplier: Supplier\nOat milk 2 3.50 7.00\nTotal: 7.00')
+    page.get_by_role('button',name='Find supplier & items').click()
+    expect(page.locator('[data-quick-item]')).to_have_count(1)
+    page.get_by_role('button',name='Add a missing item').click()
+    expect(page.locator('[data-quick-item]')).to_have_count(2)
+    expect(page.get_by_role('button',name='Add 2 items to stock')).to_be_visible()
+    page.locator('[data-quick-remove]').last.click()
+    expect(page.get_by_role('button',name='Add 1 item to stock')).to_be_visible()
+    page.set_viewport_size({'width':390,'height':844})
+    assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
+    expect(page.get_by_role('button',name='Add 1 item to stock')).to_be_enabled()

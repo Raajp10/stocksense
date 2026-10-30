@@ -87,3 +87,12 @@ if(chartElement && window.Chart){
 }
 
 });
+const quickItems=document.getElementById('quick-items');
+if(quickItems){
+ let quickIndex=1000;
+ const updateQuick=()=>{const count=quickItems.querySelectorAll('[data-quick-item]').length;const submit=document.querySelector('#quick-receive-form button[type=submit],#quick-receive-form .sticky-actions button');submit.textContent=`Add ${count} item${count===1?'':'s'} to stock`;submit.disabled=!count||!document.querySelector('select[name=destination]').value;};
+ const wireQuick=row=>row.querySelector('[data-quick-remove]').addEventListener('click',()=>{row.remove();updateQuick();});
+ quickItems.querySelectorAll('[data-quick-item]').forEach(wireQuick);
+ document.getElementById('quick-add-item').addEventListener('click',()=>{quickItems.insertAdjacentHTML('beforeend',document.getElementById('quick-item-template').innerHTML.replaceAll('__index__',String(quickIndex++)));wireQuick(quickItems.lastElementChild);quickItems.lastElementChild.querySelector('input[name$=_name]').focus();updateQuick();});
+ updateQuick();
+}

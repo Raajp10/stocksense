@@ -55,12 +55,14 @@ def match_suggestions(store_id, data):
 
 def create_import(actor, text, source_name, source_key=None):
     try:
-        actor=lock_store(actor,True)
+        actor=lock_store(actor)
         if not text.strip() or len(text)>100_000:
             raise DomainError('No readable text found. Try a sharper photo, text PDF, or paste the email content.')
         digest=hashlib.sha256(re.sub(r'\s+',' ',text).strip().encode()).hexdigest()
         existing=db.session.scalar(select(DocumentImport).where(DocumentImport.store_id==actor.store_id,DocumentImport.source_hash==digest))
         if existing:
+            if actor.role!='owner' and existing.created_by!=actor.id:
+                raise DomainError('This bill is already in the store document tray. Ask the owner to check it; no stock was added.')
             db.session.commit();return existing,False
         data=match_suggestions(actor.store_id,parse_text(text))
         draft=DocumentImport(store_id=actor.store_id,source_name=source_name[:200],source_hash=digest,
@@ -73,8 +75,9 @@ def create_import(actor, text, source_name, source_key=None):
 
 def save_review(actor, ident, form):
     try:
-        actor=lock_store(actor,True)
+        actor=lock_store(actor)
         draft=scoped(DocumentImport,ident,actor.store_id)
+        if actor.role!='owner' and draft.created_by!=actor.id: raise DomainError('This document belongs to another team member.')
         if draft.status not in ('draft','reviewed'):
             raise DomainError('This import has already been finalized.')
         if whole(form.get('version'))!=draft.version:
@@ -136,6 +139,8 @@ def save_review(actor, ident, form):
 
 
 def prepare_records(actor,draft):
+    if actor.role!='owner' and draft.created_by!=actor.id: raise DomainError('This document belongs to another team member.')
+    if actor.role!='owner' and draft.data.get('update_supplier'): raise DomainError('Only an owner can update supplier contacts.')
     data=draft.data;metadata=data['metadata']
     checks=inspect_document(metadata,data['lines'])
     if checks['errors']: raise DomainError(' '.join(checks['errors']))
