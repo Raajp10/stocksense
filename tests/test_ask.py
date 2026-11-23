@@ -151,3 +151,29 @@ def test_new_question_does_not_inherit_previous_product_filter(app,owner,monkeyp
     result=answer(owner,'What should I reorder?',validate_plan({'tool':'locations','product':'Oat milk'}))
     assert seen==[None] and result['context']['product']==''
     assert result['rows']==[]  # Stock 8 is above target 5; not a spurious product-specific suggestion.
+
+
+@pytest.mark.parametrize('provider',['builtin','ollama'])
+def test_bottom_five_last_month_overrides_wrong_model_ranking(app,owner,monkeypatch,provider):
+    from zoneinfo import ZoneInfo
+    app.config['ASK_PROVIDER']=provider
+    monkeypatch.setattr('app.services.ask.model_plan',lambda *args:({'tool':'top_sellers','period':'today','limit':20},'Local AI'))
+    today=datetime.now(ZoneInfo('America/Chicago')).date()
+    start,_=date_range(validate_plan({'period':'last_month'}),today)
+    stamp,_=utc_bounds(start,start+timedelta(days=1),'America/Chicago')
+    # Seven products: the bottom five must include zero and exclude 10/20 sellers.
+    products=[db.session.get(Product,1)]
+    for i in range(6):
+        p=Product(store_id=1,supplier_id=1,name=f'Rank item {i}',sku=f'RANK-{i}',cost_cents=100,price_cents=200)
+        db.session.add(p);products.append(p)
+    db.session.flush()
+    for p,units in zip(products,[20,0,1,2,3,4,10]):
+        if units: db.session.add(Sale(store_id=1,product_id=p.id,location_id=1,quantity=units,price_cents=200,actor_id=1,operation_id=sale_operation(),effective_at=stamp))
+    db.session.commit()
+    result=answer(owner,'bottom 5 sellers for last month')
+    assert result['title']=='Slowest sellers'
+    assert [int(r[2]) for r in result['rows']]==[0,1,2,3,4]
+    assert result['context']['limit']==5 and result['context']['period']=='last_month'
+    assert 'lowest first' in result['summary']
+    top=answer(owner,'top 3 sellers for last month')
+    assert [int(r[2]) for r in top['rows']]==[20,10,4]

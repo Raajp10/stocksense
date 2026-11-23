@@ -27,6 +27,14 @@ def validate_plan(plan):
     return result
 
 
+def ranking_direction(question):
+    # Explicit ranking direction outranks a model guess. Use word boundaries so
+    # product names such as 'stockpot' do not become top-seller questions.
+    if re.search(r'\b(bottom|slowest|slow|least|worst|lowest)\b',question,re.I): return 'slow_sellers'
+    if re.search(r'\b(top|best|fastest|highest)\b|most popular|most sold',question,re.I): return 'top_sellers'
+    return None
+
+
 def local_plan(question,context=None):
     """Transparent offline fallback for common questions; this is not an LLM."""
     q=question.casefold();plan={'tool':'help','product':'','period':'last_30_days','limit':5,'horizon':7}
@@ -35,8 +43,7 @@ def local_plan(question,context=None):
     elif re.search(r'run.?out|stockout|out of stock|this week|next week',q): plan['tool']='runout'
     elif re.search(r'low.stock|below|threshold|running low',q): plan['tool']='low_stock'
     elif re.search(r'where|location|stored|shelf|backroom',q): plan['tool']='locations'
-    elif re.search(r'top|best|fastest|most popular|most sold',q): plan['tool']='top_sellers'
-    elif re.search(r'slow|least|worst',q): plan['tool']='slow_sellers'
+    elif ranking_direction(q): plan['tool']=ranking_direction(q)
     elif re.search(r'revenue|sales|sold|stock value|inventory value|worth',q): plan['tool']='sales'
     elif re.search(r'stock|inventory|how many|on hand',q): plan['tool']='stock'
     elif context and re.search(r'last month|this month|yesterday|today|last \d+ days|why|and |what about|how about',q):
@@ -48,7 +55,7 @@ def local_plan(question,context=None):
     elif re.search(r'last (?:7|seven) days|this week',q): plan['period']='last_7_days'
     dates=re.findall(r'\b\d{4}-\d{2}-\d{2}\b',q)
     if len(dates)==2: plan.update(period='custom',start=dates[0],end=dates[1])
-    limit=re.search(r'(?:top|bottom|first)\s+(\d+)\b',q)
+    limit=re.search(r'(?:top|bottom|first|lowest|highest|best|worst|slowest|fastest)\s+(\d+)\b',q)
     if limit: plan['limit']=max(1,min(20,int(limit.group(1))))
     horizon=re.search(r'(?:next|within|in)\s+(\d+)\s+days?',q)
     if horizon: plan['horizon']=max(1,min(90,int(horizon.group(1))))
@@ -95,7 +102,12 @@ def answer(actor,question,context=None):
             raw,engine=model_plan(question,context,today)
             plan=validate_plan(raw)
             defaults=local_plan(question,context)
-            if not re.search(r'\b(?:top|bottom|first|show)\s+\d+',question,re.I): plan['limit']=5
+            direction=ranking_direction(question)
+            if direction and re.search(r'\b(sellers?|selling|sold|sales|products?|items?)\b',question,re.I):
+                plan['tool']=direction
+            explicit_limit=re.search(r'\b(?:top|bottom|first|show|lowest|highest|best|worst|slowest|fastest)\s+(\d+)\b',question,re.I)
+            if explicit_limit: plan['limit']=max(1,min(20,int(explicit_limit.group(1))))
+            if not explicit_limit: plan['limit']=5
             if not re.search(r'\b(?:next|within|in)\s+\d+\s+days?',question,re.I): plan['horizon']=7
             if defaults['period']!='last_30_days':
                 plan.update({k:defaults[k] for k in ('period','start','end')})
@@ -162,7 +174,7 @@ def answer(actor,question,context=None):
             result['notes'].append('Revenue uses saved sale prices. Stock value uses current catalog costs. These figures are not profit; unrecorded sales are not included.')
         else:
             if tool=='top_sellers': ranked=[r for r in ranked if r[1]>0]
-            result.update(title='Top sellers' if tool=='top_sellers' else 'Slowest sellers',summary=f'{len(ranked)} matching products. Ranked by recorded units sold.',headers=['Product','SKU','Units sold','Recorded revenue'],rows=[[p.name,p.sku,str(units),money(revenue)] for p,units,revenue in ranked[:plan['limit']]],total=len(ranked))
+            result.update(title='Top sellers' if tool=='top_sellers' else 'Slowest sellers',summary=f'{len(ranked)} matching products. Ranked by recorded units sold, '+('lowest first (including zero sales).' if tool=='slow_sellers' else 'highest first.'),headers=['Product','SKU','Units sold','Recorded revenue'],rows=[[p.name,p.sku,str(units),money(revenue)] for p,units,revenue in ranked[:plan['limit']]],total=len(ranked))
         result['notes'].insert(0,label)
         result['links']=[('Open dashboard','/?start='+start.isoformat()+'&end='+end.isoformat())]
     if result['total']>len(result['rows']): result['notes'].append(f'Showing {len(result["rows"])} of {result["total"]} matches. Ask for up to 20 or specify a product.')
