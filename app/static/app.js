@@ -96,3 +96,4 @@ if(quickItems){
  document.getElementById('quick-add-item').addEventListener('click',()=>{quickItems.insertAdjacentHTML('beforeend',document.getElementById('quick-item-template').innerHTML.replaceAll('__index__',String(quickIndex++)));wireQuick(quickItems.lastElementChild);quickItems.lastElementChild.querySelector('input[name$=_name]').focus();updateQuick();});
  updateQuick();
 }
+document.querySelectorAll('[data-ask-example]').forEach(button=>button.addEventListener('click',()=>{const form=document.getElementById('ask-form');form.querySelector('[name=question]').value=button.dataset.askExample;form.requestSubmit();}));

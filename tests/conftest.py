@@ -14,7 +14,7 @@ from app.services.inventory import execute
 def app(tmp_path):
     url=os.getenv('TEST_DATABASE_URL',f'sqlite:///{tmp_path / "test.db"}')
     application=create_app(dict(TESTING=True,SECRET_KEY='test-only-secret',SQLALCHEMY_DATABASE_URI=url,
-        UPLOAD_DIR=str(tmp_path/'uploads'),WTF_CSRF_ENABLED=False))
+        UPLOAD_DIR=str(tmp_path/'uploads'),WTF_CSRF_ENABLED=False,ASK_PROVIDER='builtin'))
     with application.app_context():
         # TEST_DATABASE_URL must point at a disposable test database.
         db.drop_all()

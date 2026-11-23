@@ -30,7 +30,7 @@ jobs:
           TEST_DATABASE_URL: postgresql+psycopg://postgres:test-only-password@localhost:5432/stocksense_test
         run: uv run pytest --ignore=tests/e2e -q --junitxml=test-results/postgres.xml
       - name: Browser workflows
-        run: uv run pytest tests/e2e -q --junitxml=test-results/browser.xml
+        run: uv run pytest tests/e2e -q --output=test-results/playwright --junitxml=test-results/browser.xml
       - name: Migration and reconciliation
         run: |
           uv run flask --app app db upgrade

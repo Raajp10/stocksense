@@ -42,3 +42,7 @@ Raaj replied “make these proto MVP” to the paid-hosting question. The delive
 The preferred local input is a supplier CSV or original text PDF when available; photo/scanned-PDF OCR is the paper fallback. No external mailbox connection, cloud OCR subscription or automatic unreviewed stock write is required. Recognition limits are documented rather than represented as universal document understanding.
 
 Simple receiving refinement: owners and workers can upload a bill and correct item information without company/contact/catalog setup. Supplier details remain automatically stored, new SKUs are generated, and one receiving location applies to the list. Worker access is restricted to their own documents; reversal, supplier-contact management, purchasing and existing catalog pricing remain owner functions. New products can be stocked before pricing, with sales blocked until the owner sets a selling price.
+
+FR21 adds Ask StockSense for owner questions about stock, sales, locations and reorder needs. Implementation: `assistant.py`, `services/ask.py`, `ask_provider.py`, validated read tools, local Ollama, optional Gemini and built-in fallback.
+
+The assistant explains the existing sales-based recommendations. It does not implement ML forecasting, place orders or adjust inventory. The current machine's local model was tested live; a live Gemini call remains unverified without an API key.

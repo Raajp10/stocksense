@@ -28,7 +28,7 @@ The deterministic scenario is covered by tests: starting shelf 3/backroom 5, sel
 
 ## Follow-up
 
-Render hosting and hosted-media redeployment testing are deferred beyond the MVP. Physical-camera optics on the classroom device still require Raaj's rehearsal. The December demonstration and final BrightSpace submission remain scheduled course obligations. AI Q&A, email and other optional features remain future work.
+Render hosting and hosted-media redeployment testing are deferred beyond the MVP. Physical-camera optics on the classroom device still require Raaj's rehearsal. The December demonstration and final BrightSpace submission remain scheduled course obligations. Supplier email and other optional features remain future work. Ask StockSense is now available as described below.
 
 ## New business workflows
 
@@ -37,3 +37,5 @@ Use **Receive & import** for a whole receipt or supplier email. Text PDFs and CS
 Use **Stock reviews** for an annual or cycle count across multiple products and locations. Owners request the sheet, staff save/submit manual observations, and owners review differences before approving or asking for a recount. Category cards, stock filters, sorting and a compact table are available under Products. The sidebar scrolls on short screens so sign-out and settings remain reachable. Owners can restore archived records and cancel an unneeded count request without changing stock.
 
 Simple bill receiving is the default for both roles: upload, check products/quantities/unit costs, confirm one receiving location and add all items. Supplier/contact fields and catalog setup are handled in the background; owners retain the optional full review. New products can be stocked before pricing; sales require a positive owner-set price. Workers may receive their own documents but cannot reverse receipts, change existing catalog prices, update supplier contacts or manage purchase orders.
+
+Owners can now open **Ask StockSense** and use the suggested stock, sales, location and reorder questions. This machine uses its existing Ollama `llama3.2:latest` model. A fresh install defaults to built-in interpretation until a local model or Gemini key is configured. Provider problems fall back visibly. The assistant reads records and explains the existing formula; it does not change inventory or use ML forecasting. Live Gemini inference has not been tested without a configured key.

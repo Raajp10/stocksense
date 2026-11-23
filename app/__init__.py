@@ -37,7 +37,11 @@ def create_app(config=None):
         SQLALCHEMY_TRACK_MODIFICATIONS=False, MAX_CONTENT_LENGTH=12*1024*1024,
         UPLOAD_DIR=os.getenv("UPLOAD_DIR", str(Path(app.instance_path)/"uploads")),
         SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=production, WTF_CSRF_TIME_LIMIT=3600)
+        SESSION_COOKIE_SECURE=production, WTF_CSRF_TIME_LIMIT=3600,
+        ASK_PROVIDER=os.getenv('ASK_PROVIDER','builtin'),
+        ASK_OLLAMA_MODEL=os.getenv('ASK_OLLAMA_MODEL','llama3.2:latest'),
+        ASK_GEMINI_MODEL=os.getenv('ASK_GEMINI_MODEL','gemini-3.5-flash-lite'),
+        GEMINI_API_KEY=os.getenv('GEMINI_API_KEY',''),ASK_TIMEOUT=30)
     if config:
         app.config.update(config)
     Path(app.config["UPLOAD_DIR"]).mkdir(parents=True, exist_ok=True)
@@ -60,6 +64,8 @@ def create_app(config=None):
     from .reviews import reviews
     app.register_blueprint(imports)
     app.register_blueprint(reviews)
+    from .assistant import assistant
+    app.register_blueprint(assistant)
     from .cli import register_commands
     register_commands(app)
 

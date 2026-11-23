@@ -66,3 +66,12 @@ Final local verification: 98 SQLite service/HTTP tests and 12 Playwright workflo
 ## Simple receiving for owners and workers
 
 Local verification passed 103 service/HTTP cases and 15 Playwright workflows. Both owner and staff browser cases upload the actual TEST-1042 photo, verify the default destination, confirm delivery and add all three products without company or selling-price fields. Additional checks cover manual item controls, mobile layout, own-document restrictions, ignored privileged form fields, unchanged catalog prices, missing suppliers, mismatched totals, whole-list receipt safety, duplicate posts and blocked sales until new products are priced. Live draft #2 was checked at desktop and 390px width without receiving stock.
+
+
+## Ask StockSense — November 23
+
+The owner assistant adds validated stock, location, low-stock, depletion, reorder, sales, top/slow-seller tools. The current local Llama 3.2 model was exercised through Ollama and the actual browser UI. It correctly interpreted location and reorder questions; a new global question resets an earlier product filter. Local CPU timing varied; one browser answer took about 22 seconds during concurrent verification. No live inventory or purchasing mutation was submitted.
+
+The expanded suite passed 124 service/HTTP cases separately on SQLite and on a newly created disposable PostgreSQL database, which was removed after the run. Assistant cases cover exact reorder quantities, calendar-month bounds, saved sale prices, store/owner isolation, write/secret requests, malformed model calls, provider outages, XSS escaping, date limits, provider request contracts and context reset. Gemini's adapter used protocol fixtures; live Gemini inference was not verified without a key. Browser coverage includes examples, follow-up dates, reset, linked source screens and mobile width. Committed JUnit evidence is refreshed for the report.
+
+Final browser verification passed all 16 workflows. Playwright output now uses a dedicated subdirectory so it preserves the SQLite/PostgreSQL JUnit files for CI artifacts.

@@ -26,6 +26,7 @@
       {% set active=request.endpoint==endpoint or (endpoint=='inventory.counts' and request.endpoint and request.endpoint.startswith('reviews.')) or (endpoint=='imports.index' and request.endpoint and request.endpoint.startswith('imports.')) %}
       <a class="{{'active' if active else ''}}" href="{{url_for(endpoint)}}"><span>{{icon}}</span>{{label}}</a>
     {% endfor %}
+    {% if current_user.role=='owner' %}<a class="{{'active' if request.endpoint=='assistant.ask' else ''}}" href="{{url_for('assistant.ask')}}"><span>✦</span>Ask StockSense</a>{% endif %}
   </nav>
   {% if current_user.role=='owner' %}
   <span class="nav-label">MANAGE</span>

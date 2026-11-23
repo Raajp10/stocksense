@@ -26,3 +26,7 @@ Print the label before class. Use localhost on the laptop's own webcam, or a ver
 - Why does a historical sale retain its old price after product editing?
 
 Course milestones: December 9 demonstration, CLO 363; December 13 submission at 11:59 p.m. Check BrightSpace for time, timezone and final instructions.
+
+## Ask StockSense
+
+As the owner, open Ask StockSense and click “Where is Oat milk stored?” Check the returned locations against the product screen. Ask “What should I reorder?” and compare its numbers with Reorder assistant. Try “What were my top 5 sellers last month?”, then “And today?” to demonstrate calendar follow-ups. A model interprets the question; validated functions read only this store and the application calculates the answer. Local Llama runs on this machine; fresh installs can use built-in interpretation. Never claim the chat is a trained stock forecasting model or that live Gemini was verified without a key.

@@ -28,6 +28,7 @@ This is the requested local prototype MVP. It runs without a hosting subscriptio
 - Explainable 14-completed-day reorder recommendations and approved incoming stock.
 - Supplier drafts, editable quantities/destinations, approval, cancellation, full receipt once.
 - Dashboard, dated sales chart, fastest/slowest products, owner-only cost metrics and CSV exports.
+- Ask StockSense: local AI or optional Gemini questions about stock, sales, product locations and reorder needs, grounded in validated read tools.
 - Local browser assets: the demo works without a CDN or AI service.
 
 ## Quick start (macOS/Linux)
@@ -107,9 +108,23 @@ SQLite and uploads live in ignored `instance/` locally. Set `DATABASE_URL` for P
 
 ## Scope and limitations
 
-One store per user, whole-number units, custom product-type QR codes, full order receipts, no payments, fractional weights, returns, recipes, lot/expiry automation, supplier API or manufacturer barcode lookup. Recorded sales can understate demand during stockouts. The formula is deterministic arithmetic, not learned forecasting. A new token for the same physical delivery cannot always be detected as a duplicate. AI Q&A, supplier email and PDF purchase orders remain optional future work.
+One store per user, whole-number units, custom product-type QR codes, full order receipts, no payments, fractional weights, returns, recipes, lot/expiry automation, supplier API or manufacturer barcode lookup. Recorded sales can understate demand during stockouts. The formula is deterministic arithmetic, not learned forecasting. A new token for the same physical delivery cannot always be detected as a duplicate. Ask StockSense provides optional model-assisted read-only Q&A. Supplier email and PDF purchase orders remain future work.
 
 Course deliverables include an executable application, public repository, a PDF report of at least 20 pages, and an in-class demonstration on December 9. Submission is December 13 by 11:59 p.m.; confirm the LMS timezone and demonstration timing. See [report](docs/StockSense_Report.pdf) and [AI disclosure](docs/ai-usage.md).
 
 For an earlier incorrect receipt, open its record and choose **Re-read saved source with local ML**. This prepares a new editable draft without changing inventory. **Reverse incorrect receipt** previews the exact original movements and requires explicit confirmation; it appends compensating movements and preserves history. Receive a replacement only after the original receipt is reversed.
 
+
+## Ask StockSense
+
+Owners can open **Ask StockSense** in the sidebar and ask about current stock, product locations, low-stock items, stockout estimates, reorder quantities, top/slow sellers, recorded revenue and stock value. Suggested questions, follow-up date questions and links back to source screens are included. Answers use store-scoped read functions and the existing reorder arithmetic; models cannot execute SQL or write inventory.
+
+Choose a question interpreter in the private `.env` file and restart the app:
+
+- `ASK_PROVIDER=builtin`: instant built-in interpretation for common questions; no LLM or network required.
+- `ASK_PROVIDER=ollama`: local AI using an already installed [Ollama](https://docs.ollama.com/) server. Start `ollama serve` if needed, install the model with `ollama pull llama3.2`, and use `ASK_OLLAMA_MODEL=llama3.2:latest`. This model is about 2 GB on disk; first load and CPU-only answers may take longer. Model downloads are a separate setup step, never triggered by an app question.
+- `ASK_PROVIDER=gemini`: set your private `GEMINI_API_KEY` and `ASK_GEMINI_MODEL=gemini-3.5-flash-lite`. The [Gemini function-calling API](https://aistudio.google.com/docs/function-calling) identifies a permitted lookup. Only the question, last query context, date and tool schema are sent; query results stay in the app. API access/charges depend on your Google account.
+
+Responses show which interpreter actually ran. A model outage or invalid response falls back to the built-in interpreter with a visible notice. Unsupported questions ask for clarification. Questions are bounded to 500 characters, result lists to 20 rows and sales ranges to 367 days. “Last month” uses the previous calendar month in the store timezone; revenue uses saved sale prices. Recommendations remain sales-based estimates, not machine-learning forecasts.
+
+The local Llama model was exercised live on the developer machine; Gemini's request/response adapter is tested with fixtures. A live Gemini request requires your own configured key and is not claimed as verified.

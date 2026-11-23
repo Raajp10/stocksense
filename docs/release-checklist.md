@@ -30,7 +30,7 @@
 - [ ] Attend December 9 demonstration in CLO 363.
 - [ ] Submit final PDF and direct public repository URL to BrightSpace by December 13, 11:59 p.m.
 
-Future dates are obligations, not tasks an automated implementation can certify in advance. Optional AI Q&A, email, PDF purchase orders, partial receipt, expiry/lot tracking and manufacturer barcodes are deliberately deferred.
+Future dates are obligations, not tasks an automated implementation can certify in advance. Optional supplier email, PDF purchase orders, partial receipt, expiry/lot tracking and manufacturer barcodes are deliberately deferred.
 
 ## October 29 expanded release
 
@@ -40,3 +40,11 @@ Future dates are obligations, not tasks an automated implementation can certify 
 - [x] 95 local tests; PostgreSQL 84-case suite; fresh-install rehearsal and stock reconciliation.
 - [x] Hosted expanded-workflow CI passed: run 40989654598.
 - [x] Updated 25-page report, actual screenshots, README and private-upload handling.
+
+## Ask StockSense expansion — November 23
+
+- [x] Owner-only assistant with stock, locations, reorder explanations, depletion estimates and calendar sales rankings.
+- [x] Local Ollama interpretation verified using the existing `llama3.2:latest` model; no model weights included in the repository.
+- [x] Gemini function-call adapter implemented and fixture-tested; live Gemini inference still requires a private key.
+- [x] Validated tool arguments, fixed provider endpoints, authenticated store scoping, no SQL/mutation tools, labeled fallback and escaped responses.
+- [x] Browser examples, follow-up dates, conversation reset, mobile layout and no-stock-write checks.
